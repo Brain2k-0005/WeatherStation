@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WeatherStation.ConsoleApp/WeatherStation.ConsoleApp.csproj" />
+    <Project Path="src/WeatherStation.Core/WeatherStation.Core.csproj" />
+    <Project Path="src/WeatherStation.Web/WeatherStation.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WeatherStation.Tests/WeatherStation.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,42 @@
+@* Status-Pille für eine Warnung: farbiger Punkt + Text auf --muted, ohne Rahmen
+   (Design Guide "Status- und Zustandsfarben"). Die Farben stehen in css/app.css
+   (Abschnitt BADGE-FARBEN).
+     Hinweis   = blau   (Info)
+     Warnung   = amber
+     Gefahr    = rot
+     Entwarnung = smaragdgrün (Art AllClear, Stufe Info) *@
+<span class="ws-pill ws-pill-status @Class">
+    <span class="ws-dot @DotClass" aria-hidden="true"></span>
+    @Text
+</span>
+
+@code {
+    [Parameter, EditorRequired] public WeatherWarning Warning { get; set; } = default!;
+
+    [Parameter] public string? Class { get; set; }
+
+    // Eine Entwarnung hat technisch die Stufe "Info", soll aber grün und als
+    // "Entwarnung" erscheinen. Deshalb wird zuerst die Art geprüft.
+    private string Text => Warning.Type == WarningType.AllClear ? "Entwarnung" : Warning.Level.ToGerman();
+
+    private string DotClass
+    {
+        get
+        {
+            if (Warning.Type == WarningType.AllClear)
+            {
+                return "ws-dot-emerald";
+            }
+
+            switch (Warning.Level)
+            {
+                case WarningLevel.Danger:
+                    return "ws-dot-red";
+                case WarningLevel.Warning:
+                    return "ws-dot-amber";
+                default:
+                    return "ws-dot-blue";
+            }
+        }
+    }
+}

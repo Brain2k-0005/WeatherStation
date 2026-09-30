@@ -1,0 +1,19 @@
+@* Leerzustand einer Tabelle (Design Guide "Leerzustand"): schlichter Block mit Symbol,
+   Titel und Hinweis. css/app.css gibt der Zelle 24 px Polster und lässt sie die
+   Höhe der Tabelle füllen. In <EmptyContent> des DataGrid verwenden. *@
+<div class="ws-grid-empty flex flex-col items-center gap-2">
+    <SvgGlyph Svg="@(Icon ?? Lucide.Inbox)" Class="size-8 text-muted-foreground" />
+    <div class="text-sm font-medium text-foreground">@Title</div>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <div class="text-xs text-muted-foreground">@Description</div>
+    }
+</div>
+
+@code {
+    [Parameter] public IconSource? Icon { get; set; }
+
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+
+    [Parameter] public string? Description { get; set; }
+}

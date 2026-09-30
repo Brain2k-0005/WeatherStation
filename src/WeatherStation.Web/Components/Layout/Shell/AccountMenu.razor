@@ -1,0 +1,66 @@
+@implements IDisposable
+@inject ThemeService ThemeService
+
+@* Nutzer-Menü am Fuß der Sidebar. Es gibt keine Anmeldung (bewusste Vereinfachung),
+   das Menü enthält deshalb nur den hell/dunkel-Umschalter.
+   Ein Klick genügt: ToggleModeAsync wechselt zwischen hell und dunkel
+   (kein "System"-Zwischenschritt, die App startet immer hell). *@
+<DropdownMenu @bind-Open="_open" class="block w-full">
+    <DropdownMenuTrigger Class="w-full">
+        <button type="button" class="ws-user-chip" title="Benutzermenü">
+            <span class="ws-avatar">B</span>
+            <span class="grid flex-1 min-w-0 text-left leading-tight">
+                <span class="truncate text-sm font-medium">Berufsschule</span>
+                <span class="truncate text-xs text-sidebar-foreground/70">Lernprojekt</span>
+            </span>
+            <SvgGlyph Svg="@(Lucide.ChevronsUpDown)" Class="ml-auto size-4 shrink-0" />
+        </button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent Align="Align.End" Side="Side.Right" Class="ws-user-menu w-64">
+        <DropdownMenuItem OnClick="ToggleTheme">
+            <SvgGlyph Svg="@(ThemeService.IsDark ? Lucide.Sun : Lucide.Moon)" Class="size-4" />
+            <span class="flex-1">Dunkler Modus</span>
+            @* stopPropagation: Sonst würde der Klick auf den Schalter zusätzlich den Menüeintrag
+               auslösen, und das Theme würde zweimal umgeschaltet. *@
+            <span @onclick:stopPropagation="true">
+                <Switch Checked="ThemeService.IsDark" CheckedChanged="@(async (bool _) => await ToggleTheme())" Size="Size.Sm" />
+            </span>
+        </DropdownMenuItem>
+    </DropdownMenuContent>
+</DropdownMenu>
+
+@code {
+    private bool _open;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Liest den bereits gesetzten Modus aus dem Browser in den ThemeService.
+            await ThemeService.InitializeAsync();
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Ändert sich das Theme, muss das Symbol (Sonne/Mond) neu gezeichnet werden.
+        ThemeService.OnThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleModeAsync();
+        _open = false;
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
+    }
+}

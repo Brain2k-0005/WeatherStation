@@ -1,0 +1,98 @@
+@page "/warnungen"
+@implements IDisposable
+@inject WeatherSystem Weather
+
+<PageTitle>Warnungen - Wetterstation</PageTitle>
+
+@* Seitentitel steht in der Kopfleiste. Karte ohne Füllung, darin die Tabelle randlos,
+   darunter die Zähler-Fußzeile (Design Guide "Grids"). *@
+<div class="flex h-full min-h-0 flex-col">
+    <Card Variant="Card.CardVariant.Outline" Class="ws-card min-h-0 flex-1 gap-0 py-0 overflow-hidden">
+        <div class="flex min-h-0 flex-1 flex-col">
+            <DataGrid TItem="WeatherWarning" Items="@_warnings"
+                      Class="ws-grid min-h-0 flex-1"
+                      Hoverable
+                      ShowToolbar="false"
+                      ShowPagination="false"
+                      PageSize="500">
+                <EmptyContent>
+                    <GridEmpty Icon="@Lucide.BellOff" Title="Noch keine Warnungen"
+                               Description="Sobald ein Grenzwert überschritten wird, erscheint hier eine Meldung." />
+                </EmptyContent>
+                <ChildContent>
+                    <DataGridColumnDef TItem="WeatherWarning" Title="Zeit" Field="Time" Sortable Width="150">
+                        <CellTemplate>
+                            <span class="tabular-nums">@Display.DateAndTime(context.Time)</span>
+                        </CellTemplate>
+                    </DataGridColumnDef>
+                    <DataGridColumnDef TItem="WeatherWarning" Title="Stufe" Field="Level" Sortable Width="140">
+                        <CellTemplate>
+                            <LevelPill Warning="context" />
+                        </CellTemplate>
+                    </DataGridColumnDef>
+                    <DataGridColumnDef TItem="WeatherWarning" Title="Art" Field="Type" Sortable Width="170">
+                        <CellTemplate>@Display.TypeName(context.Type)</CellTemplate>
+                    </DataGridColumnDef>
+                    <DataGridColumnDef TItem="WeatherWarning" Title="Titel" Field="Title" Sortable Width="190">
+                        <CellTemplate>
+                            <span class="font-medium">@context.Title</span>
+                        </CellTemplate>
+                    </DataGridColumnDef>
+                    @* Genau eine Spalte nimmt die Restbreite (Design Guide). *@
+                    <DataGridColumnDef TItem="WeatherWarning" Title="Meldung" Field="Message" FillWidth>
+                        <CellTemplate>
+                            <span class="text-muted-foreground">@context.Message</span>
+                        </CellTemplate>
+                    </DataGridColumnDef>
+                </ChildContent>
+            </DataGrid>
+        </div>
+
+        @* Zähler-Fußzeile: Anzahl der Einträge. *@
+        <div class="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 py-2.5 text-sm text-muted-foreground">
+            <span class="tabular-nums">@_warnings.Count @(_warnings.Count == 1 ? "Eintrag" : "Einträge")</span>
+        </div>
+    </Card>
+</div>
+
+@code {
+    private IDisposable? _subscription;
+    private bool _disposed;
+    private IReadOnlyList<WeatherWarning> _warnings = [];
+
+    protected override void OnInitialized()
+    {
+        _warnings = Weather.WarningHistory.GetAll();
+
+        // ============================================================
+        // PATTERN: Observer - Rolle: Abonnent
+        // Die Tabelle soll live mitwachsen. Deshalb meldet sich die Seite am
+        // Warn-Dienst an und liest bei jeder neuen Warnung den Verlauf neu.
+        // ============================================================
+        _subscription = Weather.Warnings.Subscribe("Warnungen-Tabelle", warning => Refresh());
+    }
+
+    private void Refresh()
+    {
+        // Die Meldung kommt aus dem Hintergrund-Thread der Simulation.
+        // InvokeAsync bringt uns in den UI-Kontext zurück, sonst ist StateHasChanged verboten.
+        InvokeAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _warnings = Weather.WarningHistory.GetAll();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        // Abmelden, sonst Speicherleck: Der Warn-Dienst würde diese (längst geschlossene)
+        // Seite weiter benachrichtigen und im Speicher festhalten.
+        _disposed = true;
+        _subscription?.Dispose();
+    }
+}

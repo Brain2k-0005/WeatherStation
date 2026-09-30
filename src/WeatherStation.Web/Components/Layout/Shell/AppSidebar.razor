@@ -1,0 +1,58 @@
+@implements IDisposable
+@inject NavigationManager Nav
+
+@* Sidebar nach shadcn "sidebar-07": oben Logo, in der Mitte die Navigation,
+   unten das Nutzer-Menü (mit hell/dunkel-Umschalter). *@
+<SidebarHeader Bordered="false" Class="flex-row items-center !gap-0">
+    <a href="/" class="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-sidebar-foreground no-underline">
+        <img src="/logo.svg" alt="" class="h-7 w-7 shrink-0" />
+        <div class="grid flex-1 text-left leading-tight">
+            <Lumeo.Text As="span" Size="sm" Weight="semibold" Truncate="true">Wetterstation</Lumeo.Text>
+            <Lumeo.Text As="span" Size="xs" Color="muted" Truncate="true">Berufsschule</Lumeo.Text>
+        </div>
+    </a>
+</SidebarHeader>
+
+<SidebarContent Class="flex-1">
+    @* Nur eine Gruppe, deshalb ohne Gruppenüberschrift (Design Guide). *@
+    <SidebarGroup>
+        <SidebarMenu>
+            @foreach (var item in AppNavigation.Items)
+            {
+                <SidebarMenuItem>
+                    <SidebarMenuButton Href="@item.Href" IsActive="@IsActive(item.Href)" Tooltip="@item.Label">
+                        <IconContent><SvgGlyph Svg="@item.Icon" Class="h-4 w-4" /></IconContent>
+                        <LabelContent><span>@item.Label</span></LabelContent>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            }
+        </SidebarMenu>
+    </SidebarGroup>
+</SidebarContent>
+
+<SidebarFooter Bordered="false">
+    <AccountMenu />
+</SidebarFooter>
+
+@code {
+    private bool IsActive(string href)
+    {
+        AppNavigation.NavItem? current = AppNavigation.Match(Nav.ToBaseRelativePath(Nav.Uri));
+        return current?.Href == href;
+    }
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

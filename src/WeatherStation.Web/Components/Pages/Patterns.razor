@@ -1,0 +1,188 @@
+@page "/muster"
+@inject WeatherSystem Weather
+@inject SimulationRunner Runner
+
+<PageTitle>Design Patterns - Wetterstation</PageTitle>
+
+@* Reine Lernseite: zeigt, WO im Code jedes Muster steckt und WARUM es dort sinnvoll ist.
+   Sie abonniert nichts und braucht deshalb kein IDisposable. *@
+<div class="flex flex-col gap-4">
+
+    <div class="grid gap-4 lg:grid-cols-2">
+
+        <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+            <CardHeader Class="!px-4 !py-3 border-b border-border">
+                <CardTitle Class="text-base font-semibold leading-snug">Observer</CardTitle>
+                <CardDescription>Einer meldet, viele hören zu.</CardDescription>
+            </CardHeader>
+            <CardContent Class="!p-4 flex flex-col gap-3 text-sm">
+                <div>
+                    <div class="font-medium">Wo im Code?</div>
+                    <ul class="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
+                        <li><code>Core/Observer/Subject.cs</code>: die wiederverwendbare Basisklasse (Anmelden, Abmelden, Benachrichtigen).</li>
+                        <li><code>Core/Services/Station.cs</code>: meldet Messwerte.</li>
+                        <li><code>Core/Services/WarningService.cs</code>: ist Observer der Station und Subject der Warnungen.</li>
+                        <li><code>Core/Observers/</code>: Verlauf und Statistik als fertige Observer.</li>
+                        <li><code>Web/Components/Pages/</code>: jede Seite abonniert live und meldet sich in <code>Dispose()</code> wieder ab.</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="font-medium">Warum?</div>
+                    <p class="mt-1 text-muted-foreground">
+                        Die Station kennt ihre Zuhörer nicht. Neue Anzeigen (Bildschirm, Toast, Statistik) lassen sich
+                        ergänzen, ohne die Station zu ändern. Ohne Observer müsste die Station jede Anzeige selbst
+                        aufrufen oder jede Anzeige müsste ständig nachfragen (Polling).
+                    </p>
+                </div>
+                <div class="text-muted-foreground">
+                    Live ansehen im
+                    <a href="/observer-labor" class="font-medium text-primary hover:underline">Observer-Labor</a>.
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+            <CardHeader Class="!px-4 !py-3 border-b border-border">
+                <CardTitle Class="text-base font-semibold leading-snug">Builder</CardTitle>
+                <CardDescription>Ein komplexes Objekt Schritt für Schritt zusammenbauen.</CardDescription>
+            </CardHeader>
+            <CardContent Class="!p-4 flex flex-col gap-3 text-sm">
+                <div>
+                    <div class="font-medium">Wo im Code?</div>
+                    <ul class="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
+                        <li><code>Core/Building/WeatherStationBuilder.cs</code>: <code>SetName</code>, <code>AddFrostWarning</code>, <code>Build</code> ...</li>
+                        <li><code>Core/Building/WeatherSystem.cs</code>: das fertige, verkabelte Produkt.</li>
+                        <li><code>Web/Program.cs</code>: hier wird das System für diese Web-App gebaut.</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="font-medium">Warum?</div>
+                    <p class="mt-1 text-muted-foreground">
+                        Ein System besteht aus Station, Warn-Dienst, Regeln, Verlauf und Statistik, die richtig
+                        verkabelt sein müssen. Der Builder liest sich wie eine Bestellung und prüft beim Bauen, dass
+                        nichts fehlt (Name, mindestens eine Regel).
+                    </p>
+                </div>
+                <div class="text-muted-foreground">
+                    Regeln dieses Systems:
+                    <span class="font-medium text-foreground">@string.Join(", ", Weather.Warnings.RuleNames)</span>
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+            <CardHeader Class="!px-4 !py-3 border-b border-border">
+                <CardTitle Class="text-base font-semibold leading-snug">Factory Method</CardTitle>
+                <CardDescription>Die Unterklasse entscheidet, welches Objekt entsteht.</CardDescription>
+            </CardHeader>
+            <CardContent Class="!p-4 flex flex-col gap-3 text-sm">
+                <div>
+                    <div class="font-medium">Wo im Code?</div>
+                    <ul class="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
+                        <li><code>Core/Scenarios/WeatherScenario.cs</code>: die abstrakte Fabrikmethode <code>CreateSensor</code>.</li>
+                        <li><code>StormScenario</code>, <code>FrostNightScenario</code>, <code>HeatWaveScenario</code>, <code>RandomScenario</code>: jede erzeugt ihren eigenen Sensor.</li>
+                        <li><code>Web/Services/SimulationRunner.cs</code>: <code>ChangeScenario</code> ruft nur <code>Start()</code> auf.</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="font-medium">Warum?</div>
+                    <p class="mt-1 text-muted-foreground">
+                        Der Simulationsdienst arbeitet nur mit <code>ISensor</code>. Ein neues Szenario ist eine
+                        neue Unterklasse, der Dienst bleibt unverändert. Die statischen Methoden wie
+                        <code>WeatherWarning.Frost(...)</code> sind übrigens KEINE Factory Method im Sinne der
+                        GoF, sondern nur einfache Hilfsmethoden.
+                    </p>
+                </div>
+                <div class="text-muted-foreground">
+                    Aktuelles Szenario:
+                    <span class="font-medium text-foreground">@Runner.CurrentScenario.Name</span>
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+            <CardHeader Class="!px-4 !py-3 border-b border-border">
+                <CardTitle Class="text-base font-semibold leading-snug">Singleton</CardTitle>
+                <CardDescription>Von einer Klasse gibt es genau eine Instanz.</CardDescription>
+            </CardHeader>
+            <CardContent Class="!p-4 flex flex-col gap-3 text-sm">
+                <div>
+                    <div class="font-medium">Wo im Code?</div>
+                    <ul class="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
+                        <li><code>Core/Settings/WarningSettings.cs</code>: privater Konstruktor, <code>Lazy&lt;T&gt;</code> für Thread-Sicherheit.</li>
+                        <li><code>Core/Building/WeatherStationBuilder.cs</code>: liest als einziger die Grenzwerte.</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="font-medium">Warum?</div>
+                    <p class="mt-1 text-muted-foreground">
+                        Die Grenzwerte sollen überall gleich sein. Die Regeln bekommen ihre Werte trotzdem per
+                        Konstruktor und nicht direkt vom Singleton, damit sie in Tests mit eigenen Werten
+                        prüfbar bleiben.
+                    </p>
+                </div>
+                <div>
+                    <div class="font-medium">Nachteile</div>
+                    <p class="mt-1 text-muted-foreground">
+                        Ein Singleton ist globaler Zustand: Man sieht einer Klasse nicht an, dass sie davon
+                        abhängt, und in Tests lässt es sich nicht austauschen. In ASP.NET Core nimmt man deshalb
+                        meist <code>AddSingleton(...)</code> der Dependency Injection. Das ist nur eine
+                        Lebensdauer im DI-Container (so wird hier das <code>WeatherSystem</code> registriert),
+                        nicht das Singleton-Muster selbst.
+                    </p>
+                </div>
+            </CardContent>
+        </Card>
+    </div>
+
+    @* --- Singleton-Nachweis + Grenzwerte --- *@
+    <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+        <CardHeader Class="!px-4 !py-3 border-b border-border">
+            <CardTitle Class="text-base font-semibold leading-snug">Singleton-Nachweis</CardTitle>
+            <CardDescription>
+                Jeder Aufruf von <code>WarningSettings.Instance</code> liefert dasselbe Objekt, egal aus welchem Browser-Tab.
+            </CardDescription>
+        </CardHeader>
+        <CardContent Class="!p-4">
+            <Descriptions Column="2">
+                <DescriptionsItem Label="InstanceId">
+                    <span class="font-mono text-sm">@_settings.InstanceId</span>
+                </DescriptionsItem>
+                <DescriptionsItem Label="Erstellt am">
+                    <span class="tabular-nums">@Display.DateAndTime(_settings.CreatedAt)</span>
+                </DescriptionsItem>
+                <DescriptionsItem Label="Zweiter Aufruf, gleiche Instanz?">
+                    @(ReferenceEquals(_settings, WarningSettings.Instance) ? "Ja, dieselbe Instanz" : "Nein")
+                </DescriptionsItem>
+                <DescriptionsItem Label="Zweite InstanceId">
+                    <span class="font-mono text-sm">@WarningSettings.Instance.InstanceId</span>
+                </DescriptionsItem>
+            </Descriptions>
+        </CardContent>
+    </Card>
+
+    <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+        <CardHeader Class="!px-4 !py-3 border-b border-border">
+            <CardTitle Class="text-base font-semibold leading-snug">Grenzwerte</CardTitle>
+            <CardDescription>Alle Werte stammen aus dem Singleton <code>WarningSettings</code>.</CardDescription>
+        </CardHeader>
+        <CardContent Class="!p-4">
+            <Descriptions Column="2">
+                <DescriptionsItem Label="Temperaturänderung ab">@Display.Number(_settings.TemperatureChangeLimit) °C</DescriptionsItem>
+                <DescriptionsItem Label="Frostwarnung bei höchstens">@Display.Number(_settings.FrostLimit) °C</DescriptionsItem>
+                <DescriptionsItem Label="Frost-Entwarnung ab">@Display.Number(_settings.FrostClearLimit) °C</DescriptionsItem>
+                <DescriptionsItem Label="Hitzewarnung ab">@Display.Number(_settings.HeatLimit) °C</DescriptionsItem>
+                <DescriptionsItem Label="Hitze-Entwarnung bei höchstens">@Display.Number(_settings.HeatClearLimit) °C</DescriptionsItem>
+                <DescriptionsItem Label="Sturmwarnung ab">@Display.Number(_settings.StormLimit) km/h</DescriptionsItem>
+                <DescriptionsItem Label="Sturm-Entwarnung bei höchstens">@Display.Number(_settings.StormClearLimit) km/h</DescriptionsItem>
+                <DescriptionsItem Label="Luftdruckfall ab">@Display.Number(_settings.PressureDropLimit) hPa</DescriptionsItem>
+                <DescriptionsItem Label="... innerhalb von">@_settings.PressureDropWindow.TotalHours.ToString("0.#") Stunden</DescriptionsItem>
+            </Descriptions>
+        </CardContent>
+    </Card>
+</div>
+
+@code {
+    // PATTERN: Singleton - so kommt man an die einzige Instanz. Es gibt kein "new WarningSettings()".
+    private readonly WarningSettings _settings = WarningSettings.Instance;
+}

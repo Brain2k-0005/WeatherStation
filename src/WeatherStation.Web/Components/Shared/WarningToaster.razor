@@ -1,0 +1,57 @@
+@implements IDisposable
+@inject WeatherSystem Weather
+@inject ToastService Toast
+
+@* Unsichtbare Komponente: zeigt jede Warnung ab Stufe "Warnung" als Toast (Hinweis-Meldung)
+   an, egal auf welcher Seite man gerade ist. Sie steht deshalb im MainLayout. *@
+
+@code {
+    private IDisposable? _subscription;
+    private bool _disposed;
+
+    protected override void OnInitialized()
+    {
+        // ============================================================
+        // PATTERN: Observer - Rolle: Abonnent (mit Filter)
+        // Where() ist ein Filter wie in Rx: Der Toaster bekommt nur Warnungen
+        // der Stufe Warning und Danger. Reine Hinweise (Info) und Entwarnungen
+        // erreichen ihn gar nicht erst.
+        // Subscribe() gibt ein Token (IDisposable) zurück. Mit Dispose() meldet
+        // man sich wieder ab.
+        // ============================================================
+        _subscription = Weather.Warnings
+            .Where(warning => warning.Level >= WarningLevel.Warning)
+            .Subscribe("Toast-Anzeige", ShowToast);
+    }
+
+    private void ShowToast(WeatherWarning warning)
+    {
+        // Diese Methode wird vom Hintergrund-Thread der Simulation aufgerufen,
+        // nicht vom UI-Thread. InvokeAsync wechselt in den richtigen Kontext.
+        // Ohne InvokeAsync würde Blazor eine Exception werfen.
+        InvokeAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (warning.Level == WarningLevel.Danger)
+            {
+                Toast.Error(warning.Title, warning.Message);
+            }
+            else
+            {
+                Toast.Warning(warning.Title, warning.Message);
+            }
+        });
+    }
+
+    public void Dispose()
+    {
+        // Abmelden! Sonst bleibt diese Komponente für immer beim (Singleton-)Warn-Dienst
+        // angemeldet: ein Speicherleck, und Meldungen gehen an eine tote Komponente.
+        _disposed = true;
+        _subscription?.Dispose();
+    }
+}

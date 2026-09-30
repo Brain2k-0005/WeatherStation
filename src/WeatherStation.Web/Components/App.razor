@@ -1,0 +1,57 @@
+@*
+    Kopfbereich der Seite (Muster aus dem Huppenkothen-Starter, App.head.razor).
+
+    CSS-Ladereihenfolge:
+      1. lumeo.css            - Lumeo-Tokens
+      2. lumeo-utilities.css  - fertig gebaute Utility-Klassen von Lumeo
+      3. css/site.out.css     - eigener Tailwind-Build (npm run build:css)
+      4. css/fonts.css        - Geist (selbst gehostet)
+      5. css/app.css          - Huppenkothen-Theme + Design-Guide-Korrekturen
+
+    Kein "Aufblitzen" des falschen Themes: <html> wird HELL gerendert, und Lumeos
+    theme.js setzt das gespeicherte Theme synchron im <head>, bevor der Body gemalt wird.
+*@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>Wetterstation</title>
+    <ResourcePreloader />
+
+    <link rel="stylesheet" href="_content/Lumeo/css/lumeo.css" />
+    <link rel="stylesheet" href="_content/Lumeo/css/lumeo-utilities.css" />
+    <link rel="stylesheet" href="@Assets["css/site.out.css"]" />
+    <link rel="stylesheet" href="@Assets["css/fonts.css"]" />
+    <link rel="stylesheet" href="@Assets["css/app.css"]" />
+    <link rel="stylesheet" href="@Assets["WeatherStation.Web.styles.css"]" />
+
+    <link rel="icon" type="image/svg+xml" href="@Assets["logo.svg"]" />
+
+    @* Theme-Primer: läuft VOR theme.js. Die App startet HELL (nicht im Betriebssystem-
+       Schema): Ist noch kein Modus gespeichert, wird "light" eingetragen, sonst würde
+       theme.js auf prefers-color-scheme zurückfallen. *@
+    <script>
+        (function () {
+            try {
+                if (!localStorage.getItem('theme-mode') && !localStorage.getItem('theme')) {
+                    localStorage.setItem('theme-mode', 'light');
+                }
+            } catch (e) { /* Speicher gesperrt (privater Modus) - theme.js nutzt dann seine Standardwerte */ }
+        })();
+    </script>
+    <script src="_content/Lumeo/js/theme.js"></script>
+
+    <ImportMap />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <ReconnectModal />
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+
+</html>

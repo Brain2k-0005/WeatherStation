@@ -1,0 +1,1320 @@
+/* =============================================================================
+   WeatherStation - Lumeo overrides (plain CSS, NOT run through Tailwind).
+
+   Uebernommen aus dem Huppenkothen-Starter (app.reference.css, Praefix "sqla-"
+   wurde zu "ws-"; Wrapper-Klassen ".ws" / ".ws-shell" stehen in MainLayout.razor).
+   Entfernt wurden app-spezifische Abschnitte (Flow-Graph, Severity-Badge,
+   Datumsbereichs-Filter, Gruppierung), weil diese App sie nicht braucht.
+
+   Regeln des Design Guides:
+   - Zuerst wird immer eine Lumeo-Komponente / Option geprueft; eigenes CSS ist die Ausnahme.
+   - Jeder Abschnitt nennt im Kopfkommentar WAS er ueberschreibt und WARUM
+     (gegen welches Lumeo- oder Browser-Verhalten).
+   - Ein CSS-Kommentar darf nie einen Schraegstrich direkt nach einem Stern enthalten.
+
+   Ladereihenfolge (App.razor): lumeo.css -> lumeo-utilities.css -> site.out.css
+   -> fonts.css -> app.css.
+   ============================================================================= */
+
+
+/* -----------------------------------------------------------------------------
+   PREFLIGHT (partial)
+   Only box-sizing and line-height from Tailwind's preflight; the full preflight
+   (already shipped inside lumeo-utilities.css) is not re-imported in site.css
+   because a second copy would strip Lumeo components of their own borders and
+   spacing. Base font is Geist at 14px (guide: "Basis-Schriftgroesse 14 px").
+   ----------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    line-height: 1.5;
+    color-scheme: light;
+}
+
+html.dark {
+    color-scheme: dark;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+}
+
+
+/* -----------------------------------------------------------------------------
+   THEME TOKENS (Huppenkothen theme - the app's only colour scheme, shared with DocFlow)
+   Lumeo 5.x derives every --color-X token as var(--X, <zinc fallback>), so the
+   theme is set through the shadcn base names. Light is the default; .dark is set
+   Border/input colours intentionally stay below 3:1 contrast; meaning-carrying
+   states use --ring which reaches 3:1 (guide, "Barrierefreiheit").
+   ----------------------------------------------------------------------------- */
+:root {
+    --background: oklch(0.973 0 89.88);
+    --foreground: oklch(0.22 0.004 164.71);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.22 0.004 164.71);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.22 0.004 164.71);
+    --primary: oklch(0.547 0.124 154.24);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.916 0 89.88);
+    --secondary-foreground: oklch(0.22 0.004 164.71);
+    --muted: oklch(0.916 0 89.88);
+    --muted-foreground: oklch(0.623 0 89.88);
+    --accent: oklch(0.916 0 89.88);
+    --accent-foreground: oklch(0.22 0.004 164.71);
+    --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.444 0.177 26.899);
+    --border: oklch(0.853 0.003 165.06);
+    --input: oklch(0.853 0.003 165.06);
+    --ring: oklch(0.547 0.124 154.24);
+
+    --sidebar: oklch(1 0 0);
+    --sidebar-foreground: oklch(0.22 0.004 164.71);
+    --sidebar-primary: oklch(0.547 0.124 154.24);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.916 0 89.88);
+    --sidebar-accent-foreground: oklch(0.22 0.004 164.71);
+    --sidebar-border: oklch(0.853 0.003 165.06);
+    --sidebar-ring: oklch(0.547 0.124 154.24);
+
+    --success: oklch(0.547 0.124 154.24);
+    --success-foreground: oklch(0.985 0 0);
+    --success-text: oklch(0.32 0.09 154.24);
+    --info: oklch(0.623 0.214 259.815);
+    --info-foreground: oklch(1 0 0);
+    --info-text: oklch(0.379 0.146 265.522);
+    --warning: oklch(0.683 0.164 49.32);
+    --warning-foreground: oklch(0.985 0 0);
+    --warning-text: oklch(0.38 0.13 49.32);
+
+    --radius: 0.625rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.625rem;
+    --radius-xl: 0.875rem;
+    --radius-2xl: 1.125rem;
+    --radius-3xl: 1.375rem;
+    --radius-4xl: 1.625rem;
+
+    --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+}
+
+.dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.68 0.14 154.24);
+    --primary-foreground: oklch(0.145 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.577 0.245 27.325);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.68 0.14 154.24);
+
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.68 0.14 154.24);
+    --sidebar-primary-foreground: oklch(0.145 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.68 0.14 154.24);
+
+    --success: oklch(0.68 0.14 154.24);
+    --success-text: oklch(0.75 0.13 154.24);
+    --info: oklch(0.623 0.214 259.815);
+    --info-text: oklch(0.546 0.245 262.881);
+    --warning: oklch(0.72 0.17 49.32);
+    --warning-text: oklch(0.78 0.15 49.32);
+}
+
+/* Numbers in mono cells line up (tabular figures); mono text uses Geist Mono. */
+.font-mono, code, pre, .tabular-nums {
+    font-variant-numeric: tabular-nums;
+}
+
+code, pre, .font-mono {
+    font-family: var(--font-mono);
+}
+
+
+/* -----------------------------------------------------------------------------
+   BLAZOR ERROR UI
+   The Blazor template's error bar has no stylesheet of its own in this app.
+   ----------------------------------------------------------------------------- */
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--color-destructive);
+    color: #fff;
+    padding: 0.75rem 1rem;
+    z-index: 9999;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    float: right;
+}
+
+/* Blazor focuses the page heading after every navigation; the resulting focus
+   ring would be misleading (guide, "Barrierefreiheit"). */
+h1:focus, h2:focus, [tabindex="-1"]:focus {
+    outline: none;
+}
+
+
+/* -----------------------------------------------------------------------------
+   BUTTONS
+   Two deliberate sizes (guide "Knoepfe"): toolbar buttons 28px / 13px / weight
+   500 / 8px radius (Lumeo Button Size=Sm), standalone controls 32px with 10px
+   radius (Lumeo default size). Lumeo's Sm rung is 28px already but uses 12px text
+   and symmetric padding; the Next.js reference has 13px text and 12/10px padding.
+   Dialog buttons are excluded ([role=dialog]) - they keep Lumeo's sizing.
+   ----------------------------------------------------------------------------- */
+.ws {
+    --lumeo-control-h-sm: calc(var(--spacing, 0.25rem) * 7);
+}
+
+/* Square icon buttons (h-7 w-7, w-[--lumeo-control-h-sm]) are excluded: the text padding would squeeze their icon to 6px. */
+.ws button.h-7:not(.w-7):not([role="dialog"] button),
+.ws a.h-7,
+.ws .ws-toolbar-btn {
+    height: 28px;
+    min-height: 28px;
+    padding: 0 12px 0 10px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    gap: 6px;
+}
+
+.ws button[class*="lumeo-control-h-sm"]:not([class*="w-[var(--lumeo-control-h-sm"]):not([role="dialog"] button) {
+    padding: 0 12px 0 10px;
+    font-size: 0.8125rem;
+    gap: 6px;
+}
+
+.ws button[class*="lumeo-control-h-sm"].px-0:not([role="dialog"] button) {
+    padding: 0;
+    justify-content: center;
+}
+
+.ws .ws-icon-btn {
+    height: 28px;
+    width: 28px;
+    padding: 0;
+    border-radius: var(--radius-md);
+}
+
+/* Header icon buttons are 32x32 / radius 10 (larger than the 28x28 sidebar trigger). */
+.ws .ws-icon-btn-lg {
+    height: 32px;
+    width: 32px;
+    border-radius: var(--radius-lg);
+}
+
+/* Default-size buttons: 10px radius; smaller sizes keep 8px. */
+.ws button.h-8,
+.ws button[class*="lumeo-control-h,"] {
+    border-radius: var(--radius-lg);
+}
+
+/* Lucide icons inside buttons/links: fixed 16px, Lumeo leaves them at the SVG's intrinsic size in some slots. */
+.ws button svg,
+.ws a svg {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+}
+
+.ws button svg.size-3\.5,
+.ws a svg.size-3\.5,
+.ws button svg.h-3\.5,
+.ws a svg.h-3\.5 {
+    width: 14px;
+    height: 14px;
+}
+
+.ws button svg.size-3,
+.ws a svg.size-3,
+.ws button svg.h-3,
+.ws a svg.h-3 {
+    width: 12px;
+    height: 12px;
+}
+
+/* The filter bar's "clear all" link sits at 14px like the reference, not the toolbar 13px. */
+.ws [data-slot="filters"] > button.ms-auto {
+    font-size: 0.875rem !important;
+}
+
+
+/* -----------------------------------------------------------------------------
+   DESTRUCTIVE BUTTONS
+   App-wide soft tint (10% destructive background, no shadow) instead of solid
+   red: Lumeo's Button knows only one destructive variant for every context
+   (guide "Flaechen, Rahmen und Interaktion").
+   ----------------------------------------------------------------------------- */
+.ws button[class*="bg-destructive"],
+.ws .ws-btn-soft-destructive {
+    background: color-mix(in oklab, var(--color-destructive) 10%, transparent);
+    color: var(--color-destructive);
+    border: 1px solid transparent;
+    box-shadow: none;
+}
+
+.ws button[class*="bg-destructive"]:hover,
+.ws .ws-btn-soft-destructive:hover {
+    background: color-mix(in oklab, var(--color-destructive) 20%, transparent);
+}
+
+
+/* -----------------------------------------------------------------------------
+   LINKS
+   Links use the primary colour instead of an info blue - the info tone was hard
+   to read on dark card surfaces (guide "Flaechen, Rahmen und Interaktion").
+   ----------------------------------------------------------------------------- */
+.ws a.text-info,
+.ws a.text-info-text {
+    color: var(--color-primary);
+}
+
+
+/* -----------------------------------------------------------------------------
+   BUTTONGROUP (split button)
+   One element with a shared border and a 1px inner line between the parts, no
+   gap (guide "Knoepfe: Aufteilknopf").
+   ----------------------------------------------------------------------------- */
+.ws .ws-split {
+    display: inline-flex;
+    align-items: stretch;
+    gap: 0;
+}
+
+.ws .ws-split > button:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right-width: 0;
+}
+
+.ws .ws-split > * + * button,
+.ws .ws-split > button:last-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding-left: 6px;
+    padding-right: 6px;
+    border-left: 1px solid var(--color-border);
+}
+
+
+/* -----------------------------------------------------------------------------
+   TABS (segment bar)
+   32px muted track, 25px segments; the active segment is a flat surface without
+   shadow in light mode and a faint inset ring in dark mode. Lumeo's Pill variant
+   is 36px with a shadowed thumb. Also used for view switches (guide: "Umschalter
+   nutzen dieselbe Segmentleiste wie die Reiter").
+   ----------------------------------------------------------------------------- */
+.ws [role="tablist"] {
+    height: 32px;
+    padding: 3px;
+    border-radius: var(--radius-lg);
+    background: var(--color-muted);
+    gap: 0;
+}
+
+.ws [role="tab"] {
+    height: 25px;
+    min-height: 25px;
+    padding: 2px 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+}
+
+.ws [role="tab"][aria-selected="true"] {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    box-shadow: none;
+}
+
+.dark .ws [role="tab"][aria-selected="true"] {
+    background-color: rgb(255 255 255 / 0.045);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15);
+}
+
+/* Count chip after a tab label ("Zu bearbeiten 195"). */
+.ws .ws-tab-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    margin-left: 2px;
+    padding: 2px 8px;
+    border-radius: 26px;
+    background: var(--color-muted);
+    color: var(--color-foreground);
+    font-size: 10px;
+    line-height: 16px;
+    font-variant-numeric: tabular-nums;
+}
+
+
+/* -----------------------------------------------------------------------------
+   SIDEBAR
+   Items 32px (guide "Sidebar-Eintrag 32 px hoch"), active item tinted with 10%
+   primary; group labels 32px. Lumeo's SidebarMenuButton varies with density and
+   Lumeo's sidebar content reserves a permanent scrollbar gutter.
+   ----------------------------------------------------------------------------- */
+.ws-shell aside a,
+.ws-shell aside button[class*="menu"],
+.ws-shell .ws-nav-item {
+    min-height: 32px;
+    height: 32px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+}
+
+.ws-shell aside a[class*="min-h-11"] {
+    min-height: 32px !important;
+}
+
+.ws-shell .ws-nav-active,
+.ws-shell aside a[data-active="true"] {
+    background: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+}
+
+.ws-shell aside ul {
+    gap: 0;
+}
+
+.ws-shell aside li {
+    margin: 0;
+}
+
+.ws-shell aside [class*="group-label"] {
+    height: 32px;
+    margin: 0;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    color: color-mix(in oklab, var(--color-sidebar-foreground) 70%, transparent);
+}
+
+.ws-shell aside > div:first-child {
+    padding: 8px;
+    gap: 8px;
+}
+
+.ws-shell aside > div:nth-child(2) {
+    padding: 0;
+    gap: 0;
+    /* Lumeo's sidebar content sets scrollbar-gutter:stable and reserves space even when nothing overflows. */
+    scrollbar-gutter: auto;
+    scrollbar-width: none;
+}
+
+.ws-shell aside > div:nth-child(2)::-webkit-scrollbar {
+    width: 0;
+    display: none;
+}
+
+.ws-shell aside > div:nth-child(2) > div {
+    padding: 8px;
+    gap: 0;
+}
+
+.ws-shell aside > div:last-child {
+    padding: 8px;
+    gap: 8px;
+}
+
+.ws-shell aside {
+    border-right: 1px solid var(--color-sidebar-border);
+}
+
+/* While a dropdown opened from the sidebar (DB switcher, account menu) is in the DOM, the
+   aside stops clipping. Lumeo 5.10.5 positions sub-menus against the VISIBLE slice of their
+   trigger (components.js getVisibleRefRect); the aside's overflow-x:hidden clipped the
+   trigger at the sidebar edge, so the "Sprache" sub-menu opened on top of the account menu
+   instead of beside it. Scoped with :has so the collapse animation keeps clipping. */
+.ws-shell aside:has([role="menu"]) {
+    overflow: visible;
+}
+
+
+/* -----------------------------------------------------------------------------
+   SIDEBAR COLLAPSED
+   While the sidebar folds to the icon rail, the user chip animates its padding
+   in sync with Lumeo's 200ms width animation instead of snapping its alignment
+   (guide "Sidebar & Navigation").
+   ----------------------------------------------------------------------------- */
+.ws-shell .ws-user-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 48px;
+    padding: 8px;
+    border: 0;
+    border-radius: var(--radius-md);
+    text-align: left;
+    background: transparent;
+    color: var(--color-sidebar-foreground);
+    cursor: pointer;
+    transition: padding 200ms linear, height 200ms linear;
+}
+
+.ws-shell .ws-user-chip:hover {
+    background: var(--color-sidebar-accent);
+    color: var(--color-sidebar-accent-foreground);
+}
+
+.ws-shell [data-slot="sidebar"][data-collapsible="icon"] .ws-user-chip {
+    height: 32px;
+    padding: 0;
+    gap: 0;
+}
+
+.ws-shell [data-slot="sidebar"][data-collapsible="icon"] .ws-user-chip > span.grid,
+.ws-shell [data-slot="sidebar"][data-collapsible="icon"] .ws-user-chip > svg {
+    display: none;
+}
+
+.ws-shell [data-slot="sidebar"][data-collapsible="icon"] .ws-nav-group-label {
+    margin-top: -32px;
+    opacity: 0;
+}
+
+/* Square avatar tile with a primary tint (reference: "M" tile in the user chip). */
+.ws .ws-avatar {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    border-radius: var(--radius-md);
+    background: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.ws .ws-avatar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    border: 1px solid var(--color-border);
+    mix-blend-mode: darken;
+}
+
+.dark .ws .ws-avatar::after {
+    mix-blend-mode: lighten;
+}
+
+.ws .ws-role-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    height: 20px;
+    margin-top: 2px;
+    padding: 2px 8px;
+    border-radius: 26px;
+    background: var(--color-secondary);
+    color: var(--color-secondary-foreground);
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 16px;
+}
+
+
+/* -----------------------------------------------------------------------------
+   SIDEBAR-TRENNER (rail)
+   The clickable rail stays invisible and only shows the border colour on hover
+   (guide "Sidebar & Navigation"); Lumeo paints it permanently.
+   ----------------------------------------------------------------------------- */
+.ws-shell [class*="cursor-w-resize"],
+.ws-shell [class*="cursor-e-resize"],
+.ws-shell button[aria-label*="Rail"],
+.ws-shell [data-sidebar="rail"] {
+    background: transparent !important;
+    border: 0 !important;
+    width: 2px !important;
+    opacity: 0;
+}
+
+.ws-shell [class*="cursor-w-resize"]:hover,
+.ws-shell [class*="cursor-e-resize"]:hover,
+.ws-shell [data-sidebar="rail"]:hover {
+    opacity: 1;
+    background: var(--color-sidebar-border) !important;
+}
+
+
+/* -----------------------------------------------------------------------------
+   CARDS
+   A card with a footer loses Lumeo's bottom padding (the footer band carries its
+   own), and a header without description does not reserve the description row.
+   ----------------------------------------------------------------------------- */
+.ws [data-slot="card"]:has(> [data-slot="card-footer"]) {
+    padding-bottom: 0;
+}
+
+.ws [data-slot="card-header"]:not(:has([data-slot="card-description"])) {
+    grid-template-rows: auto;
+    row-gap: 0;
+}
+
+/* PageCard: bordered, unfilled surface (guide: "Karten haben keine eigene
+   Hintergrundfuellung, sondern nur Rahmen und Eckenradius"). */
+.ws-card {
+    background: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+}
+
+
+/* -----------------------------------------------------------------------------
+   GRID
+   Header 32px / 13px / muted background, rows 36px without zebra stripes, the row
+   height coming from cell padding only (guide "Grids & Tabellen"). Fixed table
+   layout, otherwise a second scrollbar appears permanently. The grid sits
+   borderless inside its card (Lumeo draws its own rounded border). Applies to
+   every DataGrid carrying Class="ws-grid".
+   ----------------------------------------------------------------------------- */
+.ws-grid,
+.ws-grid > div:first-child {
+    border-radius: 0 !important;
+}
+
+.ws-grid {
+    border: 0 !important;
+    margin: 0 !important;
+}
+
+.ws-grid > div {
+    overflow-x: auto !important;
+}
+
+.ws-grid table {
+    width: 100%;
+    font-size: 0.875rem;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.ws-grid,
+.ws-grid > div,
+.ws-grid table,
+.ws-grid table tbody,
+.ws-grid table tbody tr,
+.ws-grid table tbody td {
+    background-color: var(--color-background);
+}
+
+.ws-grid table thead tr,
+.ws-grid table tbody tr {
+    border-bottom-width: 0;
+}
+
+/* Hover highlight survives the forced row background above. */
+.ws-grid table tbody tr:hover > td {
+    background-color: color-mix(in oklab, var(--color-muted) 50%, var(--color-background));
+}
+
+.ws-grid table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    height: 32px;
+    padding: 0 12px 1px;
+    vertical-align: middle;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: normal;
+    color: var(--color-foreground);
+    background-color: var(--color-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+}
+
+.ws-grid table tbody td {
+    height: 36px;
+    padding: 7px 12px 6.7px;
+    font-size: 0.875rem;
+    line-height: 20px;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* Single-line rows: the ellipsis above only works without wrapping, and the
+       virtualized grids size their scroll spacers with a fixed 36px row estimate
+       (GridVirtualization.RowHeight) — a wrapped two-line row makes the scrollbar jump. */
+    white-space: nowrap;
+}
+
+/* The empty-state block (icon + title + hint) may wrap. */
+.ws-grid table tbody td:has(.ws-grid-empty) {
+    white-space: normal;
+}
+
+.ws-grid table thead th,
+.ws-grid table tbody td {
+    box-shadow: inset 0 -1px 0 var(--color-border);
+}
+
+.ws-grid table tbody td > span:where(.inline-flex, .ws-pill),
+.ws-grid table tbody td > div,
+.ws-grid table tbody td svg {
+    vertical-align: middle;
+}
+
+/* A cell with a status pill never visibly clips. */
+.ws-grid table tbody td:has(> .ws-pill) {
+    overflow: visible;
+    text-overflow: clip;
+}
+
+/* Last header cell: 32px right padding - room for the resize handle. */
+.ws-grid table thead th[data-slot="datagrid-header-cell"]:last-child {
+    padding-inline-end: 32px;
+}
+
+.ws-grid table thead th > div {
+    margin-inline-start: -8px;
+}
+
+/* Header sort button: flat 24px chip, 13px muted text. */
+.ws-grid table thead th[data-slot="datagrid-header-cell"] button {
+    flex: none;
+    align-self: center;
+    height: 24px;
+    min-height: 0;
+    padding: 0 8px;
+    gap: 6px;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.5;
+    border-radius: var(--radius-lg);
+    color: var(--color-muted-foreground);
+}
+
+.ws-grid table thead th[data-slot="datagrid-header-cell"] svg {
+    width: 13px;
+    height: 13px;
+    color: var(--color-foreground);
+    opacity: 0.8;
+}
+
+/* Sort icon: own Lucide glyph via CSS mask - Lumeo offers no way to style its
+   own sort icon (guide "Typografie & Icons"). Non-sortable columns (disabled
+   button) show none. */
+.ws-grid table thead th button > svg {
+    display: none;
+}
+
+.ws-grid table thead th {
+    --ws-sort-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
+}
+
+.ws-grid table thead th[aria-sort="ascending"] {
+    --ws-sort-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 7-7 7 7'/%3E%3Cpath d='M12 19V5'/%3E%3C/svg%3E");
+}
+
+.ws-grid table thead th[aria-sort="descending"] {
+    --ws-sort-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14'/%3E%3Cpath d='m19 12-7 7-7-7'/%3E%3C/svg%3E");
+}
+
+.ws-grid table thead th[data-slot="datagrid-header-cell"] button::after {
+    content: "";
+    flex: none;
+    width: 13px;
+    height: 13px;
+    background-color: currentColor;
+    -webkit-mask: var(--ws-sort-icon) center / 13px 13px no-repeat;
+    mask: var(--ws-sort-icon) center / 13px 13px no-repeat;
+}
+
+.ws-grid table thead th button:disabled::after {
+    content: none;
+}
+
+.ws-grid table thead th button:disabled {
+    pointer-events: none;
+}
+
+/* The reorder grip appears on hover only; Lumeo's own header pin button is off
+   (pinning is not offered in the header). */
+.ws-grid table thead th .lumeo-dg-reorder-grip {
+    display: none;
+}
+
+.ws-grid table thead th:hover .lumeo-dg-reorder-grip {
+    display: inline-flex;
+}
+
+.ws-grid table thead th button[aria-label*="anheft"],
+.ws-grid table thead th button[aria-label*="Pin"] {
+    display: none;
+}
+
+/* Selection column (no datagrid-header-cell slot): fixed 40px, 16px checkbox. */
+.ws-grid table thead th:not([data-slot="datagrid-header-cell"]) {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+}
+
+.ws-grid table thead th:not([data-slot="datagrid-header-cell"]) > div {
+    margin-inline-start: 0;
+}
+
+.ws-grid table thead th:not([data-slot="datagrid-header-cell"]) button {
+    flex: none;
+    height: 16px;
+    width: 16px;
+    padding: 0;
+    border-radius: 4px;
+}
+
+.ws-grid table thead th:not([data-slot="datagrid-header-cell"]) button::after {
+    content: none;
+}
+
+.ws-grid table thead th:not([data-slot="datagrid-header-cell"]) button > svg {
+    display: block;
+}
+
+/* Exactly one column per grid takes the remaining width. */
+.ws-grid table thead th.ws-col-fill {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+}
+
+/* Empty state: a plain block with 24px padding top and bottom, no divider. */
+.ws-grid table tbody td:has(> .ws-grid-empty),
+.ws-grid table tbody td:has(.ws-grid-empty) {
+    padding: 24px 0 !important;
+    box-shadow: none !important;
+    border-bottom: 0 !important;
+    font-size: 14px;
+    text-align: center;
+    color: var(--color-muted-foreground);
+}
+
+/* Empty state fills the grid body: the empty row is an ordinary table row, so it
+   was only as tall as its content and left the rest of the pinned-height grid body
+   blank below it. While the grid is empty, the table stretches to its scroll body
+   (the body has a definite height through the page's flex chain), the header row is
+   held at its natural height (height:1px lets a table row grow only to its content)
+   and the empty cell takes the remaining height with its content vertically centred.
+   Only applies while .ws-grid-empty is rendered, so filled grids are untouched. */
+.ws-grid .overflow-auto:has(> table .ws-grid-empty) > table {
+    height: 100%;
+}
+
+.ws-grid table:has(.ws-grid-empty) thead tr {
+    height: 1px;
+}
+
+.ws-grid table tbody td:has(.ws-grid-empty) {
+    height: 100%;
+    vertical-align: middle;
+}
+
+/* Lumeo's empty-row cell carries [&_svg]:size-3.5, which outranks the empty state's own
+   size-8 icon (0,1,1 vs 0,1,0) and shrank it to 14px. */
+.ws-grid-empty svg.size-8 {
+    width: 32px;
+    height: 32px;
+}
+
+/* Native scrollbar kept (no overlay-scrollbar JS here): thin thumb on the card. */
+.ws-grid ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.ws-grid ::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* The header row is sticky INSIDE the scroll body, so the vertical scrollbar used to
+   run up beside the 32px header. Starting the track below it makes the bar span only
+   the rows (like DocFlow's overlay scrollbar). Relies on Lumeo >= 5.12.0 setting the
+   standard scrollbar-width/-color only where ::-webkit-scrollbar is unsupported (LU-21):
+   any standard scrollbar property disables every ::-webkit-scrollbar rule in Chromium.
+   Firefox keeps its thin standard bar (no track margin there). */
+
+.ws-grid > .overflow-auto::-webkit-scrollbar-track:vertical {
+    margin-top: 32px;
+}
+
+.ws-grid ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 5px;
+    border: 2px solid var(--color-background);
+}
+
+
+/* -----------------------------------------------------------------------------
+   BADGES
+   Fully rounded with 8px horizontal padding and a 20px min-height at 1rem line
+   height, so descenders are never clipped (guide "Badges & Pillen").
+   ----------------------------------------------------------------------------- */
+.ws .ws-badge {
+    min-height: 20px;
+    height: auto;
+    line-height: 1rem;
+    border-radius: var(--radius-4xl);
+    font-weight: 500;
+}
+
+.ws .ws-badge > span {
+    line-height: 1rem;
+}
+
+.ws .rounded-4xl {
+    border-radius: 999px;
+}
+
+
+/* -----------------------------------------------------------------------------
+   DESTRUCTIVE BADGES / CHIPS (Lumeo's solid bg-destructive + text-white variants)
+   What: soft tint (12% destructive background, destructive text) like the
+   destructive buttons above.
+   Why: design choice, not a bug workaround - the DocFlow guide shows destructive
+   elements soft-tinted, while Lumeo (5.11.1+) paints its Destructive variants
+   (Badge, Chip, ...) solid red with white text. Whole-token matches (~=) so the
+   bg-destructive/10-style utilities elsewhere are not hit; buttons keep their
+   own rule.
+   ----------------------------------------------------------------------------- */
+.ws [class~="bg-destructive"][class~="text-white"]:not(button) {
+    background: color-mix(in oklab, var(--color-destructive) 12%, transparent);
+    color: var(--color-destructive);
+    border-color: transparent;
+}
+
+
+/* -----------------------------------------------------------------------------
+   BADGE-FARBEN (status pills + dots)
+   Status pills always sit fully on --muted without an own border; only the 6px
+   dot carries the status colour (4px dot-text gap). Colours per guide table
+   "Status- und Zustandsfarben": emerald success, red failed, amber waiting/
+   blocked, blue in progress, violet cancelled, muted neutral.
+   ----------------------------------------------------------------------------- */
+.ws .ws-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 20px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.ws .ws-pill svg {
+    width: 12px;
+    height: 12px;
+}
+
+.ws .ws-pill-status,
+.ws .ws-pill-muted {
+    background: var(--color-muted);
+    color: var(--color-foreground);
+}
+
+.ws .ws-pill-info    { background: color-mix(in oklab, #3b82f6 15%, transparent); color: #2563eb; }
+.ws .ws-pill-purple  { background: color-mix(in oklab, #8b5cf6 15%, transparent); color: #7c3aed; }
+.ws .ws-pill-warning { background: color-mix(in oklab, #f59e0b 18%, transparent); color: #b45309; }
+.ws .ws-pill-success { background: color-mix(in oklab, #10b981 15%, transparent); color: #047857; }
+.ws .ws-pill-danger  { background: color-mix(in oklab, #ef4444 12%, transparent); color: #b91c1c; }
+
+.dark .ws .ws-pill-info    { color: #60a5fa; }
+.dark .ws .ws-pill-purple  { color: #a78bfa; }
+.dark .ws .ws-pill-warning { color: #fbbf24; }
+.dark .ws .ws-pill-success { color: #34d399; }
+.dark .ws .ws-pill-danger  { color: #f87171; }
+
+.ws .ws-dot { width: 6px; height: 6px; border-radius: 999px; flex: none; }
+.ws .ws-dot-muted { background: var(--color-muted-foreground); }
+.ws .ws-dot-emerald { background: #10b981; }
+.ws .ws-dot-amber { background: #f59e0b; }
+.ws .ws-dot-blue { background: #3b82f6; }
+.ws .ws-dot-red { background: #ef4444; }
+.ws .ws-dot-violet { background: #8b5cf6; }
+
+
+/* -----------------------------------------------------------------------------
+   CHECKBOXEN
+   Unchecked: neutral grey border, unfilled; checked: border and fill in primary
+   (guide "Status- und Zustandsfarben"). Lumeo fills unchecked boxes with the
+   input background and uses the foreground colour when checked. 4px radius.
+   ----------------------------------------------------------------------------- */
+.ws [role="checkbox"] {
+    border-radius: 4px;
+}
+
+.ws [role="checkbox"]:not([aria-checked="true"]):not([data-state="checked"]) {
+    border-color: var(--color-input);
+    background: transparent;
+    box-shadow: none;
+}
+
+.ws [role="checkbox"][aria-checked="true"],
+.ws [role="checkbox"][data-state="checked"] {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+}
+
+
+/* -----------------------------------------------------------------------------
+   DROPDOWN-MENUES
+   Menus 256px wide (w-64 on the content), items 28px, no border (ring shadow
+   only); selection marks are a check on the RIGHT, never a dot on the left
+   (guide "Menues" + "Auswahleintraege markieren mit Haken rechts").
+   ----------------------------------------------------------------------------- */
+.ws [role="menu"] {
+    border: 0;
+    border-radius: var(--radius-lg);
+    overflow: visible;
+    box-shadow:
+        0 4px 6px -1px rgb(0 0 0 / 0.1),
+        0 2px 4px -2px rgb(0 0 0 / 0.1),
+        0 0 0 1px color-mix(in oklab, var(--color-foreground) 10%, transparent);
+}
+
+.ws [role="menu"] [role="menuitem"],
+.ws [role="menu"] [role="menuitemradio"],
+.ws [role="menu"] [role="menuitemcheckbox"] {
+    height: 28px;
+    min-height: 28px;
+    padding: 4px 6px;
+    font-size: 0.875rem;
+    font-weight: 400;
+    border-radius: var(--radius-md);
+    gap: 8px;
+    text-align: left;
+    justify-content: flex-start;
+}
+
+.ws [role="menu"] [role="menuitem"] svg,
+.ws [role="menu"] [role="menuitemradio"] svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+}
+
+.ws [role="menu"] .ws-menu-check {
+    margin-inline-start: auto;
+    flex: none;
+}
+
+/* Sub-menus grow with their text (language / colour-scheme lists). */
+.ws .ws-sub-menu {
+    min-width: 0;
+    width: max-content;
+}
+
+.ws [role="menu"].ws-sub-menu [role="menuitem"] {
+    position: relative;
+    padding: 4px 32px 4px 6px;
+}
+
+.ws .ws-sub-menu .ws-menu-check {
+    position: absolute;
+    inset-inline-end: 8px;
+    top: 50%;
+    margin: 0;
+    transform: translateY(-50%);
+}
+
+/* DocFlow nudges its user menu with translate: 0 1px. Not ported: any transform on the
+   menu panel becomes the containing block of Lumeo's position:fixed sub-menus, which then
+   open on top of the parent menu instead of beside it. */
+
+
+/* -----------------------------------------------------------------------------
+   POPOVER (filter panel, column menu)
+   Edge as ring + shadow instead of a real border (guide "Karten, Popover").
+   The column-visibility popover is 150px with check marks right-aligned.
+   ----------------------------------------------------------------------------- */
+.ws-filter-panel,
+.ws [data-slot="filters"] [role="dialog"],
+.ws [data-slot="filters"] [role="listbox"] {
+    box-shadow:
+        0 4px 6px -1px rgb(0 0 0 / 0.1),
+        0 2px 4px -2px rgb(0 0 0 / 0.1),
+        0 0 0 1px color-mix(in oklab, var(--color-foreground) 10%, transparent) !important;
+}
+
+.ws-filter-panel button.h-7 {
+    padding-left: 10px;
+}
+
+.ws-filter-calendar > div {
+    padding: 8px !important;
+}
+
+.ws-filter-calendar [role="grid"] button {
+    height: 28px !important;
+    width: 28px !important;
+}
+
+/* -----------------------------------------------------------------------------
+   TOAST
+   356px wide; the variant colour appears only as border and icon accent, never
+   as a solid fill (guide "Rueckmeldungen: Toast"). Lumeo paints the whole toast
+   in the variant's -light background.
+   ----------------------------------------------------------------------------- */
+[data-slot="toast"] {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 12px;
+    width: 356px;
+    max-width: calc(100vw - 32px);
+    padding: 16px;
+    border-radius: var(--radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: var(--color-popover);
+    color: var(--color-popover-foreground);
+    border: 1px solid var(--color-border);
+}
+
+[data-slot="toast"] > * {
+    margin-inline-start: 0;
+    margin-inline-end: 0;
+}
+
+[data-slot="toast"] [data-slot="toast-provider"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 2px;
+    text-align: left;
+}
+
+[data-slot="toast-title"] {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--color-popover-foreground);
+}
+
+[data-slot="toast-description"] {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--color-muted-foreground);
+    opacity: 1;
+}
+
+[data-slot="toast"]::before {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+}
+
+[data-slot="toast"][class*="bg-success-light"] {
+    border-color: color-mix(in oklab, var(--color-success) 50%, transparent);
+}
+[data-slot="toast"][class*="bg-success-light"]::before {
+    content: "";
+    color: var(--color-success);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%2210%22%2F%3E%3Cpath%20d%3D%22m9%2012%202%202%204-4%22%2F%3E%3C%2Fsvg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%2210%22%2F%3E%3Cpath%20d%3D%22m9%2012%202%202%204-4%22%2F%3E%3C%2Fsvg%3E");
+}
+
+[data-slot="toast"][class*="bg-destructive-light"] {
+    border-color: color-mix(in oklab, var(--color-destructive) 50%, transparent);
+}
+[data-slot="toast"][class*="bg-destructive-light"]::before {
+    content: "";
+    color: var(--color-destructive);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m15%209-6%206%22%2F%3E%3Cpath%20d%3D%22M2.586%2016.726A2%202%200%200%201%202%2015.312V8.688a2%202%200%200%201%20.586-1.414l4.688-4.688A2%202%200%200%201%208.688%202h6.624a2%202%200%200%201%201.414.586l4.688%204.688A2%202%200%200%201%2022%208.688v6.624a2%202%200%200%201-.586%201.414l-4.688%204.688a2%202%200%200%201-1.414.586H8.688a2%202%200%200%201-1.414-.586z%22%2F%3E%3Cpath%20d%3D%22m9%209%206%206%22%2F%3E%3C%2Fsvg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m15%209-6%206%22%2F%3E%3Cpath%20d%3D%22M2.586%2016.726A2%202%200%200%201%202%2015.312V8.688a2%202%200%200%201%20.586-1.414l4.688-4.688A2%202%200%200%201%208.688%202h6.624a2%202%200%200%201%201.414.586l4.688%204.688A2%202%200%200%201%2022%208.688v6.624a2%202%200%200%201-.586%201.414l-4.688%204.688a2%202%200%200%201-1.414.586H8.688a2%202%200%200%201-1.414-.586z%22%2F%3E%3Cpath%20d%3D%22m9%209%206%206%22%2F%3E%3C%2Fsvg%3E");
+}
+
+[data-slot="toast"][class*="bg-warning-light"] {
+    border-color: color-mix(in oklab, var(--color-warning) 50%, transparent);
+}
+[data-slot="toast"][class*="bg-warning-light"]::before {
+    content: "";
+    color: var(--color-warning);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m21.73%2018-8-14a2%202%200%200%200-3.48%200l-8%2014A2%202%200%200%200%204%2021h16a2%202%200%200%200%201.73-3%22%2F%3E%3Cpath%20d%3D%22M12%209v4%22%2F%3E%3Cpath%20d%3D%22M12%2017h.01%22%2F%3E%3C%2Fsvg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m21.73%2018-8-14a2%202%200%200%200-3.48%200l-8%2014A2%202%200%200%200%204%2021h16a2%202%200%200%200%201.73-3%22%2F%3E%3Cpath%20d%3D%22M12%209v4%22%2F%3E%3Cpath%20d%3D%22M12%2017h.01%22%2F%3E%3C%2Fsvg%3E");
+}
+
+[data-slot="toast"][class*="bg-info-light"] {
+    border-color: color-mix(in oklab, var(--color-info) 50%, transparent);
+}
+[data-slot="toast"][class*="bg-info-light"]::before {
+    content: "";
+    color: var(--color-info);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%2210%22%2F%3E%3Cpath%20d%3D%22M12%2016v-4%22%2F%3E%3Cpath%20d%3D%22M12%208h.01%22%2F%3E%3C%2Fsvg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%2210%22%2F%3E%3Cpath%20d%3D%22M12%2016v-4%22%2F%3E%3Cpath%20d%3D%22M12%208h.01%22%2F%3E%3C%2Fsvg%3E");
+}
+
+
+/* -----------------------------------------------------------------------------
+   DIALOG
+   Confirmation and small dialogs use three fixed max widths (384 alert / 448
+   small / 512 large), a grey footer band running to the dialog edge and 16px /
+   weight 500 titles; Lumeo's footer parts bring neither background nor rounded
+   corners nor divider (guide "Dialoge"). The close X sits 8px from the corner,
+   28x28 with radius 8, in every dialog.
+   ----------------------------------------------------------------------------- */
+.ws .lumeo-dialog-close,
+.lumeo-dialog-close {
+    top: 8px;
+    inset-inline-end: 8px;
+    height: 28px;
+    width: 28px;
+    border-radius: var(--radius-md);
+}
+
+.ws-alert-dialog,
+.ws-sm-dialog,
+.ws-lg-dialog {
+    width: 100%;
+    padding: 16px;
+    border-radius: var(--radius-xl);
+}
+
+.ws-alert-dialog { max-width: 384px; }
+.ws-sm-dialog { max-width: 448px; }
+.ws-lg-dialog { max-width: 512px; }
+
+.ws-alert-dialog > button[aria-label],
+.ws-alert-dialog > .absolute {
+    display: none;
+}
+
+.ws-alert-dialog > div:last-of-type,
+.ws-sm-dialog > div:last-of-type,
+.ws-lg-dialog > div:last-of-type {
+    margin: 0 -16px -16px;
+    padding: 16px;
+    gap: 8px;
+    border-top: 1px solid var(--color-border);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    background: color-mix(in oklab, var(--color-muted) 50%, transparent);
+}
+
+.ws-alert-dialog > div:first-of-type {
+    gap: 6px;
+}
+
+.ws-sm-dialog > div:first-of-type,
+.ws-lg-dialog > div:first-of-type {
+    gap: 8px;
+}
+
+.ws-alert-dialog h2,
+.ws-sm-dialog h2,
+.ws-lg-dialog h2 {
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: normal;
+}
+
+/* -----------------------------------------------------------------------------
+   ZAHLENFELDER OHNE SPINNER
+   Guide "Eingabefelder": number inputs show no up/down step buttons (D-304).
+   Covers the NumberRange chips of the filter bar and any other numeric input;
+   browsers draw these natively, so they must be hidden per engine.
+   ----------------------------------------------------------------------------- */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+
+
+/* -----------------------------------------------------------------------------
+   KENNZAHL-ZEILE (Uebersicht)
+   Was: eine schmale Zeile aus Label / Wert / Hinweis je Kennzahl in EINER Karte.
+   Warum: Design Guide "Kennzahlen als schmale Zeile ueber dem Grid, nicht als
+   grosses Kachelraster". Lumeo bietet dafuer keine passende Komponente
+   (Statistic ist eine einzelne Kachel). Zahlen in tabular-nums, damit sie beim
+   Live-Update nicht wackeln.
+   ----------------------------------------------------------------------------- */
+.ws .ws-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 16px;
+    min-width: 0;
+}
+
+.ws .ws-kpi-label {
+    font-size: 13px;
+    color: var(--color-muted-foreground);
+}
+
+.ws .ws-kpi-value {
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.ws .ws-kpi-hint {
+    font-size: 12px;
+    color: var(--color-muted-foreground);
+    font-variant-numeric: tabular-nums;
+}

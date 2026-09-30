@@ -1,0 +1,34 @@
+@using WeatherStation.Web.Components.Layout.Shell
+@inherits LayoutComponentBase
+
+@* .ws / .ws-shell begrenzen die Design-Guide-Korrekturen aus css/app.css auf diese App.
+   Die Provider stehen INNERHALB des Wrappers, damit Toasts und Menüs den Stil erben. *@
+<div class="ws ws-shell flex h-full w-full">
+    <OverlayProvider />
+    <ToastProvider DefaultDuration="6000" />
+
+    @* PATTERN: Observer - der Toaster meldet sich selbst am Warn-Dienst an (siehe WarningToaster.razor).
+       Er steht im Layout, damit Warnungen auf JEDER Seite als Hinweis erscheinen. *@
+    <WarningToaster />
+
+    <SidebarProvider Variant="SidebarProvider.SidebarVariant.Icon"
+                     Class="flex h-full min-h-screen w-full bg-background text-foreground">
+        @* Rail: klickbarer Rand zum Ein- und Ausklappen der Sidebar. *@
+        <SidebarComponent Side="Side.Left" Rail="true">
+            <AppSidebar />
+        </SidebarComponent>
+
+        <div class="flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
+            <AppHeader />
+            <main class="min-h-0 flex-1 overflow-auto p-4">
+                @Body
+            </main>
+        </div>
+    </SidebarProvider>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Ein unerwarteter Fehler ist aufgetreten.
+    <a href="." class="reload">Neu laden</a>
+    <span class="dismiss">🗙</span>
+</div>

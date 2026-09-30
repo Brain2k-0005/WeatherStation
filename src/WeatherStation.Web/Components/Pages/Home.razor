@@ -1,0 +1,247 @@
+@page "/"
+@implements IDisposable
+@inject WeatherSystem Weather
+@inject SimulationRunner Runner
+
+<PageTitle>Übersicht - Wetterstation</PageTitle>
+
+@* Der Seitentitel steht in der Kopfleiste (AppHeader) und wird hier nicht wiederholt. *@
+<div class="flex flex-col gap-4">
+
+    @* --- Simulation steuern: Szenario wählen, Pause --- *@
+    <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
+            <div class="flex items-center gap-2">
+                <span class="text-sm text-muted-foreground">Szenario</span>
+                <Select Value="@Runner.CurrentScenario.Key" ValueChanged="OnScenarioChanged" Class="w-64">
+                    <SelectTrigger>
+                        <span>@Runner.CurrentScenario.Name</span>
+                    </SelectTrigger>
+                    <SelectContent>
+                        @foreach (WeatherScenario scenario in ScenarioCatalog.All)
+                        {
+                            <SelectItem Value="@scenario.Key">@scenario.Name</SelectItem>
+                        }
+                    </SelectContent>
+                </Select>
+            </div>
+
+            @* Binäre Entscheidung = Switch mit Zustandstext (Design Guide). *@
+            <Switch Checked="Runner.IsRunning" CheckedChanged="OnRunningChanged"
+                    OnLabel="Simulation läuft" OffLabel="Simulation pausiert" />
+
+            <span class="min-w-0 flex-1 text-sm text-muted-foreground">@Runner.CurrentScenario.Description</span>
+        </div>
+    </Card>
+
+    @* --- Kennzahl-Zeile (schmale Zeile statt großer Kacheln) --- *@
+    <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+        <div class="grid grid-cols-2 divide-x divide-border md:grid-cols-3 xl:grid-cols-5">
+            <div class="ws-kpi">
+                <span class="ws-kpi-label">Temperatur</span>
+                <span class="ws-kpi-value">@Display.Temperature(_reading?.Temperature)</span>
+                <span class="ws-kpi-hint">Ø @Display.Temperature(Weather.Statistics.AverageTemperature)</span>
+            </div>
+            <div class="ws-kpi">
+                <span class="ws-kpi-label">Luftfeuchte</span>
+                <span class="ws-kpi-value">@Display.Humidity(_reading?.Humidity)</span>
+                <span class="ws-kpi-hint">relativ</span>
+            </div>
+            <div class="ws-kpi">
+                <span class="ws-kpi-label">Luftdruck</span>
+                <span class="ws-kpi-value">@Display.Pressure(_reading?.Pressure)</span>
+                <span class="ws-kpi-hint">auf Meereshöhe</span>
+            </div>
+            <div class="ws-kpi">
+                <span class="ws-kpi-label">Wind</span>
+                <span class="ws-kpi-value">@Display.Wind(_reading?.WindSpeed)</span>
+                <span class="ws-kpi-hint">Spitze @Display.Wind(Weather.Statistics.MaxWindSpeed)</span>
+            </div>
+            <div class="ws-kpi">
+                <span class="ws-kpi-label">Warnungen</span>
+                <span class="ws-kpi-value">@Weather.WarningHistory.Count</span>
+                <span class="ws-kpi-hint">
+                    @(_reading is null ? "Warte auf Messwerte" : "Stand " + Display.Time(_reading.Time) + " Uhr (simuliert)")
+                </span>
+            </div>
+        </div>
+    </Card>
+
+    @* --- Diagramme: zwei Achsen-Größenordnungen (°C und hPa) brauchen zwei Diagramme --- *@
+    <div class="grid gap-4 lg:grid-cols-2">
+        <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+            <CardHeader Class="!px-4 !py-3">
+                <CardTitle Class="text-base font-semibold leading-snug">Temperatur</CardTitle>
+                <CardDescription>in °C, letzte @_history.Count Messwerte</CardDescription>
+            </CardHeader>
+            <CardContent Class="!px-4 !pb-4 !pt-0">
+                <LineChart Categories="@_times" Series="@_temperatureSeries"
+                           Smooth="true" ShowDots="false" ShowLegend="false"
+                           Height="240px" AnimationDuration="0" OptionOverride="@_axisFitsData" />
+            </CardContent>
+        </Card>
+
+        <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+            <CardHeader Class="!px-4 !py-3">
+                <CardTitle Class="text-base font-semibold leading-snug">Luftdruck</CardTitle>
+                <CardDescription>in hPa, letzte @_history.Count Messwerte</CardDescription>
+            </CardHeader>
+            <CardContent Class="!px-4 !pb-4 !pt-0">
+                <LineChart Categories="@_times" Series="@_pressureSeries"
+                           Smooth="true" ShowDots="false" ShowLegend="false"
+                           Height="240px" AnimationDuration="0" OptionOverride="@_axisFitsData" />
+            </CardContent>
+        </Card>
+    </div>
+
+    @* --- Die letzten fünf Warnungen --- *@
+    <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0 overflow-hidden">
+        <CardHeader Class="!px-4 !py-3 border-b border-border">
+            <CardTitle Class="text-base font-semibold leading-snug">Letzte Warnungen</CardTitle>
+            <CardDescription>Die fünf neuesten Meldungen, alle findest du unter „Warnungen“.</CardDescription>
+        </CardHeader>
+
+        @if (_latestWarnings.Count == 0)
+        {
+            <div class="py-6">
+                <GridEmpty Icon="@Lucide.BellOff" Title="Noch keine Warnungen"
+                           Description="Sobald ein Grenzwert überschritten wird, erscheint hier eine Meldung." />
+            </div>
+        }
+        else
+        {
+            <ul class="divide-y divide-border">
+                @foreach (WeatherWarning warning in _latestWarnings)
+                {
+                    <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+                        <span class="w-12 shrink-0 text-sm tabular-nums text-muted-foreground">@Display.Time(warning.Time)</span>
+                        <span class="w-28 shrink-0"><LevelPill Warning="warning" /></span>
+                        <span class="w-44 shrink-0 text-sm font-medium">@warning.Title</span>
+                        <span class="min-w-0 flex-1 text-sm text-muted-foreground">@warning.Message</span>
+                    </li>
+                }
+            </ul>
+        }
+    </Card>
+</div>
+
+@code {
+    private IDisposable? _readingSubscription;
+    private IDisposable? _warningSubscription;
+    private bool _disposed;
+
+    // Anzeige-Daten. Sie werden bei jeder Meldung neu aus den Verläufen gelesen.
+    private WeatherReading? _reading;
+    private IReadOnlyList<WeatherReading> _history = [];
+    private IReadOnlyList<WeatherWarning> _latestWarnings = [];
+    private List<string> _times = [];
+
+    // Ohne "scale" beginnt die y-Achse bei 0: Beim Luftdruck (~1000 hPa) wäre die Linie dann
+    // eine flache Gerade. "scale: true" passt die Achse an die tatsächlichen Werte an.
+    private readonly Dictionary<string, object> _axisFitsData = new()
+    {
+        ["yAxis"] = new Dictionary<string, object> { ["type"] = "value", ["scale"] = true },
+    };
+    private List<LineChart.ChartSeriesData> _temperatureSeries = [];
+    private List<LineChart.ChartSeriesData> _pressureSeries = [];
+
+    protected override void OnInitialized()
+    {
+        LoadData();
+
+        // ============================================================
+        // PATTERN: Observer - Rolle: Abonnent (Beobachter)
+        // Die Seite meldet sich an der Station (Messwerte) und am Warn-Dienst
+        // (Warnungen) an. Ab jetzt ruft die Station bei JEDEM neuen Messwert
+        // unsere Methode auf. Wir müssen nicht ständig nachfragen (kein Polling).
+        // Die Station hat replayLastValue: Wir bekommen sofort den letzten Wert.
+        // ============================================================
+        _readingSubscription = Weather.Station.Subscribe("Übersicht (Messwerte)", reading => Refresh());
+        _warningSubscription = Weather.Warnings.Subscribe("Übersicht (Warnungen)", warning => Refresh());
+
+        // Klassisches .NET-Event: auch hier gilt "in Dispose wieder abmelden".
+        Runner.StateChanged += OnRunnerStateChanged;
+    }
+
+    private void Refresh()
+    {
+        // Diese Methode läuft im Hintergrund-Thread der Simulation, nicht im UI-Thread.
+        // InvokeAsync wechselt in den UI-Kontext, erst dort darf StateHasChanged laufen.
+        InvokeAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            LoadData();
+            StateHasChanged();
+        });
+    }
+
+    private void OnRunnerStateChanged()
+    {
+        // Das Event kann aus einem anderen Browser-Tab kommen (anderer Thread).
+        // Auch hier gilt: erst in den UI-Kontext wechseln und prüfen, ob die Seite noch lebt.
+        InvokeAsync(() =>
+        {
+            if (!_disposed)
+            {
+                StateHasChanged();
+            }
+        });
+    }
+
+    private void LoadData()
+    {
+        _reading = Weather.Station.LastReading;
+        _history = Weather.ReadingHistory.GetAll();
+
+        _times = new List<string>();
+        List<double> temperatures = new();
+        List<double> pressures = new();
+        foreach (WeatherReading reading in _history)
+        {
+            _times.Add(Display.Time(reading.Time));
+            temperatures.Add(Math.Round(reading.Temperature, 1));
+            pressures.Add(Math.Round(reading.Pressure, 1));
+        }
+
+        _temperatureSeries = new List<LineChart.ChartSeriesData> { new() { Name = "Temperatur", Values = temperatures } };
+        _pressureSeries = new List<LineChart.ChartSeriesData> { new() { Name = "Luftdruck", Values = pressures } };
+
+        // WarningHistory liefert die neueste Warnung zuerst.
+        _latestWarnings = Weather.WarningHistory.GetAll().Take(5).ToList();
+    }
+
+    private void OnScenarioChanged(string? key)
+    {
+        if (!string.IsNullOrEmpty(key))
+        {
+            Runner.ChangeScenario(key);
+        }
+    }
+
+    private void OnRunningChanged(bool isRunning)
+    {
+        if (isRunning)
+        {
+            Runner.Resume();
+        }
+        else
+        {
+            Runner.Pause();
+        }
+    }
+
+    public void Dispose()
+    {
+        // Abmelden ist Pflicht: Die Station lebt so lange wie die App, diese Seite nur
+        // so lange, wie der Nutzer sie offen hat. Ohne Dispose blieben tote Seiten
+        // angemeldet (Speicherleck) und bekämen weiter Meldungen.
+        _disposed = true;
+        _readingSubscription?.Dispose();
+        _warningSubscription?.Dispose();
+        Runner.StateChanged -= OnRunnerStateChanged;
+    }
+}

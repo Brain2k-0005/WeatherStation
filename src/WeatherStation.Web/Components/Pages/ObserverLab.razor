@@ -1,0 +1,359 @@
+@page "/observer-labor"
+@implements IDisposable
+@inject WeatherSystem Weather
+@inject SimulationRunner Runner
+
+<PageTitle>Observer-Labor - Wetterstation</PageTitle>
+
+<div class="flex flex-col gap-4">
+
+    @* --- Experimente --- *@
+    <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0">
+        <CardHeader Class="!px-4 !py-3 border-b border-border">
+            <CardTitle Class="text-base font-semibold leading-snug">Experimente</CardTitle>
+            <CardDescription>
+                Melde Observer an und ab und beobachte, was in den Listen und Protokollen passiert.
+                Der Test-Observer hört auf den Warn-Dienst, der fehlerhafte Observer auf die Station.
+            </CardDescription>
+        </CardHeader>
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
+            @if (_testSubscription is null)
+            {
+                <Button Variant="Button.ButtonVariant.Outline" Size="Button.ButtonSize.Sm" OnClick="SubscribeTest">
+                    <SvgGlyph Svg="@(Lucide.Plus)" Class="h-3.5 w-3.5" />
+                    Test-Observer anmelden
+                </Button>
+            }
+            else
+            {
+                <Button Variant="Button.ButtonVariant.Outline" Size="Button.ButtonSize.Sm" OnClick="UnsubscribeTest">
+                    <SvgGlyph Svg="@(Lucide.Minus)" Class="h-3.5 w-3.5" />
+                    Test-Observer abmelden
+                </Button>
+            }
+
+            @if (_faultySubscription is null)
+            {
+                <Button Variant="Button.ButtonVariant.Outline" Size="Button.ButtonSize.Sm" OnClick="SubscribeFaulty">
+                    <SvgGlyph Svg="@(Lucide.Bug)" Class="h-3.5 w-3.5" />
+                    Fehlerhaften Observer anmelden
+                </Button>
+            }
+            else
+            {
+                <Button Variant="Button.ButtonVariant.Outline" Size="Button.ButtonSize.Sm" OnClick="UnsubscribeFaulty">
+                    <SvgGlyph Svg="@(Lucide.Minus)" Class="h-3.5 w-3.5" />
+                    Fehlerhaften Observer abmelden
+                </Button>
+            }
+
+            @* Binäre Entscheidung = Switch mit Zustandstext (Design Guide). *@
+            <Switch Checked="_onlyDanger" CheckedChanged="OnOnlyDangerChanged"
+                    OnLabel="Nur Gefahr (Where-Filter aktiv)" OffLabel="Nur Gefahr (Where-Filter aus)" />
+
+            <div class="flex items-center gap-2">
+                <span class="text-sm text-muted-foreground">Szenario</span>
+                <Select Value="@Runner.CurrentScenario.Key" ValueChanged="OnScenarioChanged" Class="w-64">
+                    <SelectTrigger>
+                        <span>@Runner.CurrentScenario.Name</span>
+                    </SelectTrigger>
+                    <SelectContent>
+                        @foreach (WeatherScenario scenario in ScenarioCatalog.All)
+                        {
+                            <SelectItem Value="@scenario.Key">@scenario.Name</SelectItem>
+                        }
+                    </SelectContent>
+                </Select>
+            </div>
+        </div>
+    </Card>
+
+    @* --- Wer ist gerade angemeldet? --- *@
+    <div class="grid gap-4 lg:grid-cols-2">
+        <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0 overflow-hidden">
+            <CardHeader Class="!px-4 !py-3 border-b border-border">
+                <CardTitle Class="text-base font-semibold leading-snug">Beobachter der Station</CardTitle>
+                <CardDescription>Bekommen jeden Messwert. Angemeldet: <span class="tabular-nums">@_stationObservers.Count</span></CardDescription>
+            </CardHeader>
+            @if (_stationObservers.Count == 0)
+            {
+                <div class="py-6"><GridEmpty Icon="@Lucide.EyeOff" Title="Kein Observer angemeldet" /></div>
+            }
+            else
+            {
+                <ul class="divide-y divide-border">
+                    @foreach (string name in _stationObservers)
+                    {
+                        <li class="flex items-center gap-2 px-4 py-2 text-sm">
+                            <SvgGlyph Svg="@(Lucide.Eye)" Class="size-4 shrink-0 text-muted-foreground" />
+                            <span class="min-w-0 truncate">@name</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </Card>
+
+        <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0 overflow-hidden">
+            <CardHeader Class="!px-4 !py-3 border-b border-border">
+                <CardTitle Class="text-base font-semibold leading-snug">Beobachter des Warn-Dienstes</CardTitle>
+                <CardDescription>Bekommen jede Warnung. Angemeldet: <span class="tabular-nums">@_warningObservers.Count</span></CardDescription>
+            </CardHeader>
+            @if (_warningObservers.Count == 0)
+            {
+                <div class="py-6"><GridEmpty Icon="@Lucide.EyeOff" Title="Kein Observer angemeldet" /></div>
+            }
+            else
+            {
+                <ul class="divide-y divide-border">
+                    @foreach (string name in _warningObservers)
+                    {
+                        <li class="flex items-center gap-2 px-4 py-2 text-sm">
+                            <SvgGlyph Svg="@(Lucide.Eye)" Class="size-4 shrink-0 text-muted-foreground" />
+                            <span class="min-w-0 truncate">@name</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </Card>
+    </div>
+
+    @* --- Protokolle --- *@
+    <div class="grid gap-4 lg:grid-cols-2">
+        <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0 overflow-hidden">
+            <CardHeader Class="!px-4 !py-3 border-b border-border">
+                <CardTitle Class="text-base font-semibold leading-snug">Protokoll des Test-Observers</CardTitle>
+                <CardDescription>Was er empfangen hat (die letzten 50 Einträge, neueste zuerst)</CardDescription>
+            </CardHeader>
+            @if (_protocol.Count == 0)
+            {
+                <div class="py-6">
+                    <GridEmpty Icon="@Lucide.ScrollText" Title="Noch nichts empfangen"
+                               Description="@(_testSubscription is null ? "Melde den Test-Observer an." : "Warte auf die nächste Warnung.")" />
+                </div>
+            }
+            else
+            {
+                <ul class="max-h-80 divide-y divide-border overflow-auto">
+                    @foreach (string line in _protocol)
+                    {
+                        <li class="px-4 py-2 text-sm">@line</li>
+                    }
+                </ul>
+            }
+        </Card>
+
+        <Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0 overflow-hidden">
+            <CardHeader Class="!px-4 !py-3 border-b border-border">
+                <CardTitle Class="text-base font-semibold leading-snug">Fehler-Protokoll (ObserverFailed)</CardTitle>
+                <CardDescription>Ein Observer wirft eine Exception, alle anderen werden trotzdem benachrichtigt.</CardDescription>
+            </CardHeader>
+            @if (_failures.Count == 0)
+            {
+                <div class="py-6">
+                    <GridEmpty Icon="@Lucide.ShieldCheck" Title="Keine Fehler"
+                               Description="Melde den fehlerhaften Observer an und schau, was passiert." />
+                </div>
+            }
+            else
+            {
+                <ul class="max-h-80 divide-y divide-border overflow-auto">
+                    @foreach (string line in _failures)
+                    {
+                        <li class="px-4 py-2 text-sm">@line</li>
+                    }
+                </ul>
+            }
+        </Card>
+    </div>
+</div>
+
+@code {
+    private const int MaxLogLines = 50;
+
+    // Ein Token (IDisposable) pro Anmeldung. null bedeutet: nicht angemeldet.
+    private IDisposable? _testSubscription;
+    private IDisposable? _faultySubscription;
+    private IDisposable? _refreshSubscription;
+
+    private bool _onlyDanger;
+    private bool _disposed;
+
+    private IReadOnlyList<string> _stationObservers = [];
+    private IReadOnlyList<string> _warningObservers = [];
+
+    // Neueste Zeile zuerst. Wird nur im UI-Kontext (InvokeAsync) verändert, daher ohne Lock.
+    private readonly List<string> _protocol = new();
+    private readonly List<string> _failures = new();
+
+    protected override void OnInitialized()
+    {
+        ReadObserverLists();
+
+        // PATTERN: Observer - diese Seite ist selbst ein Beobachter der Station.
+        // Sie taucht deshalb in der Liste "Beobachter der Station" mit auf!
+        // Bei jedem Messwert liest sie die Namenslisten neu ein (so bleibt die Anzeige live).
+        _refreshSubscription = Weather.Station.Subscribe("Observer-Labor (Anzeige)", reading => Refresh(null, null));
+
+        // ObserverFailed ist ein normales .NET-Event des Subjects. Es feuert, wenn ein
+        // Observer in OnNext eine Exception wirft. Auch hier: in Dispose wieder abmelden.
+        Weather.Station.ObserverFailed += OnStationObserverFailed;
+        Weather.Warnings.ObserverFailed += OnWarningsObserverFailed;
+    }
+
+    private void ReadObserverLists()
+    {
+        _stationObservers = Weather.Station.GetObserverNames();
+        _warningObservers = Weather.Warnings.GetObserverNames();
+    }
+
+    // ---------------------------------------------------------------
+    // Test-Observer
+    // ---------------------------------------------------------------
+
+    private void SubscribeTest()
+    {
+        if (_testSubscription is not null)
+        {
+            return;
+        }
+
+        // ============================================================
+        // PATTERN: Observer - Observer aus einem Lambda (ActionObserver)
+        // Für kleine Aufgaben braucht man keine eigene Klasse: ActionObserver
+        // packt eine Methode in einen Observer und gibt ihm einen Namen.
+        // ============================================================
+        ActionObserver<WeatherWarning> testObserver = new(
+            "Test-Observer",
+            warning => Refresh(
+                DateTime.Now.ToString("HH:mm:ss") + "  " + warning.Level.ToGerman() + ": " + warning.Title + " - " + warning.Message,
+                null));
+
+        if (_onlyDanger)
+        {
+            // PATTERN: Observer - Filter. Where() liefert eine neue "Quelle", die nur
+            // Warnungen der Stufe Gefahr durchlässt. Der Observer selbst bleibt unverändert.
+            _testSubscription = Weather.Warnings
+                .Where(warning => warning.Level == WarningLevel.Danger)
+                .Subscribe(testObserver);
+        }
+        else
+        {
+            _testSubscription = Weather.Warnings.Subscribe(testObserver);
+        }
+
+        ReadObserverLists();
+    }
+
+    private void UnsubscribeTest()
+    {
+        // Dispose() auf dem Token = abmelden. Ab jetzt kommt nichts mehr an.
+        _testSubscription?.Dispose();
+        _testSubscription = null;
+        ReadObserverLists();
+    }
+
+    private void OnOnlyDangerChanged(bool value)
+    {
+        _onlyDanger = value;
+
+        // Läuft der Test-Observer schon, wird er mit dem neuen Filter neu angemeldet.
+        if (_testSubscription is not null)
+        {
+            UnsubscribeTest();
+            SubscribeTest();
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Fehlerhafter Observer
+    // ---------------------------------------------------------------
+
+    private void SubscribeFaulty()
+    {
+        if (_faultySubscription is not null)
+        {
+            return;
+        }
+
+        ActionObserver<WeatherReading> faultyObserver = new(
+            "Fehlerhafter Observer",
+            reading => throw new InvalidOperationException("Ich bin absichtlich kaputt!"));
+
+        _faultySubscription = Weather.Station.Subscribe(faultyObserver);
+        ReadObserverLists();
+    }
+
+    private void UnsubscribeFaulty()
+    {
+        _faultySubscription?.Dispose();
+        _faultySubscription = null;
+        ReadObserverLists();
+    }
+
+    private void OnStationObserverFailed(ObserverError error) => Refresh(null, FormatFailure("Station", error));
+
+    private void OnWarningsObserverFailed(ObserverError error) => Refresh(null, FormatFailure("Warn-Dienst", error));
+
+    private static string FormatFailure(string source, ObserverError error) =>
+        DateTime.Now.ToString("HH:mm:ss") + "  " + source + " → " + error.ObserverName + ": " + error.Error.Message;
+
+    // ---------------------------------------------------------------
+    // Anzeige aktualisieren
+    // ---------------------------------------------------------------
+
+    private void Refresh(string? protocolLine, string? failureLine)
+    {
+        // Alle Meldungen kommen aus dem Hintergrund-Thread der Simulation, nicht aus dem
+        // UI-Thread. InvokeAsync wechselt in den UI-Kontext; nur dort dürfen wir die Listen
+        // ändern und StateHasChanged aufrufen.
+        InvokeAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            if (protocolLine is not null)
+            {
+                AddLine(_protocol, protocolLine);
+            }
+            if (failureLine is not null)
+            {
+                AddLine(_failures, failureLine);
+            }
+
+            ReadObserverLists();
+            StateHasChanged();
+        });
+    }
+
+    private static void AddLine(List<string> lines, string line)
+    {
+        lines.Insert(0, line);
+        if (lines.Count > MaxLogLines)
+        {
+            lines.RemoveAt(lines.Count - 1);
+        }
+    }
+
+    private void OnScenarioChanged(string? key)
+    {
+        if (!string.IsNullOrEmpty(key))
+        {
+            Runner.ChangeScenario(key);
+        }
+    }
+
+    public void Dispose()
+    {
+        // Ganz wichtig im Labor: ALLE Anmeldungen wieder abmelden, auch die Test-Observer.
+        // Sonst blieben sie nach dem Verlassen der Seite bei der Station hängen
+        // (Speicherleck) und würden weiter Meldungen an eine tote Seite schicken.
+        _disposed = true;
+        _testSubscription?.Dispose();
+        _faultySubscription?.Dispose();
+        _refreshSubscription?.Dispose();
+        Weather.Station.ObserverFailed -= OnStationObserverFailed;
+        Weather.Warnings.ObserverFailed -= OnWarningsObserverFailed;
+    }
+}

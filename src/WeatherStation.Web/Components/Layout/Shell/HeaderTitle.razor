@@ -1,0 +1,34 @@
+@implements IDisposable
+@inject NavigationManager Nav
+
+@* Einfacher Seitentitel, aus derselben Liste wie die Sidebar (AppNavigation). *@
+<Lumeo.Text As="span" Size="sm" Weight="medium" Truncate="true">@CurrentTitle</Lumeo.Text>
+
+@code {
+    private string CurrentTitle
+    {
+        get
+        {
+            AppNavigation.NavItem? item = AppNavigation.Match(Nav.ToBaseRelativePath(Nav.Uri));
+            return item?.Label ?? "Wetterstation";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        // Bei jedem Seitenwechsel muss der Titel neu gezeichnet werden.
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        // Abmelden, sonst hält der NavigationManager (lebt so lange wie die Verbindung)
+        // diese Komponente für immer im Speicher.
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}
