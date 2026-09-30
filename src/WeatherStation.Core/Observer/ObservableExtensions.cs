@@ -17,6 +17,11 @@ public static class ObservableExtensions
         return new FilteredObservable<T>(source, filter);
     }
 
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Die Innereien des Where-Filters (FilteredObservable, FilterObserver): ein Observer,
+    // der selbst wieder eine Quelle ist. Die Benutzung von Where() ist dagegen einfach.
+    // ------------------------------------------------------------
     // ============================================================
     // PATTERN: Observer – Filter als "Zwischenstation"
     // Diese Klasse ist selbst ein IObservable: Sie meldet beim Subscribe einen

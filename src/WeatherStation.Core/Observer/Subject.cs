@@ -5,6 +5,15 @@ namespace WeatherStation.Core.Observer;
 // Das Subject verwaltet die Liste seiner Observer und benachrichtigt sie.
 // Es kennt seine Observer nur über das Interface IObserver<T> (lose Kopplung).
 //
+// Einfache Fassung zum Einstieg: siehe src/WeatherStation.Beginner/Station.cs
+// (eine List, keine Threads, kein Lock). Diese Klasse hier ist die "Praxis-Version".
+//
+// ------------------------------------------------------------
+// FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+// Alles zu Thread-Sicherheit: die zwei Sperren (_lock, _deliveryLock), Copy-on-Write,
+// Interlocked im Abmelde-Token und Replay unter der Sperre. Nötig, weil in der Web-App
+// ein Hintergrunddienst meldet, während Browser-Seiten sich an- und abmelden.
+// ------------------------------------------------------------
 // Thread-Sicherheit (zwei Sperren mit klarer Aufgabe):
 // 1. _lock schützt die Observer-Liste. Jede Änderung erzeugt ein NEUES Array
 //    (Copy-on-Write). Beim Verteilen wird eine Momentaufnahme benutzt – so darf

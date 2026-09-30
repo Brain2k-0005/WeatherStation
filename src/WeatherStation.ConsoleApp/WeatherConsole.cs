@@ -314,6 +314,11 @@ public sealed class WeatherConsole
     // Tastatur
     // ---------------------------------------------------------------
 
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Tastatur ohne Blockieren abfragen (KeyAvailable), damit die Simulation weiterläuft.
+    // Die Hilfsmethoden bis zum Dateiende gehören dazu.
+    // ------------------------------------------------------------
     // Console.KeyAvailable wirft eine Exception, wenn die Eingabe umgeleitet ist.
     // Darum prüfen wir das einmal vor der Schleife.
     private static bool IsKeyboardAvailable()

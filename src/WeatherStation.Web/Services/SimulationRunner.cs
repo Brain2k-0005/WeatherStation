@@ -18,6 +18,10 @@ public sealed class SimulationRunner : BackgroundService
     private readonly WeatherSystem _system;
     private readonly ILogger<SimulationRunner> _logger;
 
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Thread-Sicherheit: Sperrobjekt für Sensor, Szenario und Pause-Zustand.
+    // ------------------------------------------------------------
     // Ein Sperrobjekt schützt _sensor, _scenario und _isRunning.
     // Grund: Der Hintergrund-Thread liest sie, während ein Browser-Thread sie ändert.
     private readonly object _lock = new();
@@ -83,6 +87,11 @@ public sealed class SimulationRunner : BackgroundService
         StateChanged?.Invoke();
     }
 
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // BackgroundService: die Schleife mit PeriodicTimer, Abbruch per CancellationToken
+    // (stoppingToken) und Fehlerbehandlung, damit der Dienst nie abstürzt.
+    // ------------------------------------------------------------
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using PeriodicTimer timer = new(Interval);

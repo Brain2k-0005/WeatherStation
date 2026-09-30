@@ -163,6 +163,11 @@
         Runner.StateChanged += OnRunnerStateChanged;
     }
 
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Blazor-spezifisch: Meldungen kommen aus dem Hintergrund-Thread. InvokeAsync wechselt
+    // in den UI-Kontext, das _disposed-Flag fängt Meldungen ab, die noch "unterwegs" sind.
+    // ------------------------------------------------------------
     private void Refresh()
     {
         // Diese Methode läuft im Hintergrund-Thread der Simulation, nicht im UI-Thread.

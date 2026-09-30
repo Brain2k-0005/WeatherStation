@@ -10,6 +10,10 @@ namespace WeatherStation.Core.Observers;
 // ============================================================
 public sealed class ReadingHistory : IObserver<WeatherReading>, INamedObserver
 {
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Thread-Sicherheit: Der lock schützt die Liste, weil Hintergrund-Thread und Oberfläche gleichzeitig zugreifen.
+    // ------------------------------------------------------------
     private readonly object _lock = new();
     private readonly List<WeatherReading> _readings = new();
     private readonly int _maxCount;

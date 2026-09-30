@@ -13,6 +13,10 @@ public sealed class WarningHistory : IObserver<WeatherWarning>, INamedObserver
 {
     private const int MaxCount = 500;
 
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Thread-Sicherheit: Der lock schützt die Liste, weil Hintergrund-Thread und Oberfläche gleichzeitig zugreifen.
+    // ------------------------------------------------------------
     private readonly object _lock = new();
     private readonly List<WeatherWarning> _warnings = new();
 

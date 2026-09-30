@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WeatherStation.Core\WeatherStation.Core.csproj" />
+    <ProjectReference Include="..\..\src\WeatherStation.Beginner\WeatherStation.Beginner.csproj" />
   </ItemGroup>
 
 </Project>

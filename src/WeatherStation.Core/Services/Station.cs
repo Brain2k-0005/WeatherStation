@@ -12,6 +12,10 @@ namespace WeatherStation.Core.Services;
 // ============================================================
 public sealed class Station : Subject<WeatherReading>
 {
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Thread-Sicherheit: _stateLock schützt LastReading und ReadingCount (mehrere Threads).
+    // ------------------------------------------------------------
     private readonly object _stateLock = new();
     private WeatherReading? _lastReading;
     private int _readingCount;

@@ -10,6 +10,10 @@ namespace WeatherStation.Core.Observers;
 // ============================================================
 public sealed class WeatherStatistics : IObserver<WeatherReading>, INamedObserver
 {
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Thread-Sicherheit: Der lock schützt die Summen, weil Hintergrund-Thread und Oberfläche gleichzeitig zugreifen.
+    // ------------------------------------------------------------
     private readonly object _lock = new();
     private int _count;
     private double _minTemperature;

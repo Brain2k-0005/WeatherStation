@@ -13,6 +13,7 @@ Ein Entwurfsmuster ist eine bewährte Lösung für ein Problem, das in der Softw
 
 ## Inhalt
 
+0. [Lernpfad: In zwei Stufen zum Observer](#lernpfad-in-zwei-stufen-zum-observer)
 1. [Worum geht's?](#1-worums-geht)
 2. [Schnellstart](#2-schnellstart)
 3. [Projektstruktur](#3-projektstruktur)
@@ -24,6 +25,39 @@ Ein Entwurfsmuster ist eine bewährte Lösung für ein Problem, das in der Softw
 5. [Observer-Labor](#5-observer-labor)
 6. [Übungsaufgaben](#6-übungsaufgaben)
 7. [Bewusste Vereinfachungen und Glossar](#7-bewusste-vereinfachungen)
+
+---
+
+## Lernpfad: In zwei Stufen zum Observer
+
+Das Projekt hat zwei Stufen. So musst du nicht gleich alles auf einmal verstehen:
+
+| Stufe | Projekt | Inhalt |
+|---|---|---|
+| **Stufe 1 – Einstieg** | `src/WeatherStation.Beginner` | Ein kleines Konsolenprogramm (ca. 150 bis 200 Zeilen). Nur das Observer-Muster: ein eigenes Interface, eine `List`, keine Threads. |
+| **Stufe 2 – Praxis** | `WeatherStation.Core`, `ConsoleApp`, `Web` | Dieselbe Idee, aber „wie im echten Projekt“: .NET-Standard-Interfaces, Generics, Fehlerisolation, Threads, Blazor. Dazu Builder, Factory Method und Singleton. |
+
+**Empfohlene Reihenfolge:**
+
+1. **Stufe 1 lesen und starten** (`dotnet run --project src/WeatherStation.Beginner`).
+2. **Stufe-2-Konsole starten** und mit den Tasten spielen.
+3. **Den Core lesen.** Kommentarblöcke mit **„FÜR FORTGESCHRITTENE“** darfst du beim ersten Mal überspringen (Locks, Copy-on-Write, `InvokeAsync` und Ähnliches).
+4. **Blazor-App und Observer-Labor** ausprobieren.
+5. **Übungsaufgaben** lösen (Kapitel 6).
+6. Zum Schluss die **Fortgeschrittenen-Blöcke** nachholen.
+
+### Was ändert sich von Stufe 1 zu Stufe 2 – und warum?
+
+| Thema | Stufe 1 | Stufe 2 | Warum? |
+|---|---|---|---|
+| Observer-Interface | eigenes `IWeatherObserver` mit `Update(reading)` | `IObserver<T>` mit `OnNext`, `OnError`, `OnCompleted` | Standard in .NET. Außerdem können Ende und Fehler gemeldet werden. |
+| Abmelden | `Unsubscribe(observer)` auf der Station | `Dispose()` auf dem Token | Man muss den Subject nicht kennen, und `using` ist möglich. |
+| Datentyp | fest `WeatherReading` | generisch: `Subject<T>` | Eine Basisklasse für Messwerte **und** Warnungen. |
+| Fehler in einem Observer | bringt die Schleife zum Absturz | Fehlerisolation plus Event `ObserverFailed` | Ein kaputter Observer darf die anderen nicht lahmlegen. |
+| Threads | keine | `lock` und Copy-on-Write | In der Web-App meldet ein Hintergrunddienst, während Seiten sich an- und abmelden. |
+| Verkettung | – | `WarningService` ist Observer **und** Subject | Aus Messwerten werden Warnungen, die wieder Abonnenten haben. |
+| Filter | `if` im Observer | `Where()` | Der Filter ist wiederverwendbar und steht nicht in jedem Observer. |
+| Neue Observer bekommen den letzten Wert | nein | ja (Replay) | Eine neue Seite ist sofort gefüllt. |
 
 ---
 
@@ -66,7 +100,15 @@ Beide nutzen **denselben Kern** (`WeatherStation.Core`). Der Kern weiß nichts d
 - **.NET 10 SDK** (`dotnet --version` sollte 10.x anzeigen).
 - **Node.js** brauchst du nur, wenn du das Aussehen (CSS) der Web-App ändern willst. Die fertige Datei `src/WeatherStation.Web/wwwroot/css/site.out.css` liegt schon bei. Wenn du `site.css` änderst, baust du sie neu mit `npm install` und `npm run build:css` (siehe `package.json`).
 
-### Konsole starten
+### Stufe 1 starten (Einstieg)
+
+```bash
+dotnet run --project src/WeatherStation.Beginner
+```
+
+Eine kurze, geführte Geschichte im Terminal: Die Station meldet Messwerte, vier Observer reagieren, und mittendrin meldet sich die Anzeige ab. Lies dazu den Quelltext in `src/WeatherStation.Beginner`.
+
+### Stufe 2: Konsole starten
 
 ```bash
 dotnet run --project src/WeatherStation.ConsoleApp
@@ -81,7 +123,7 @@ Du wählst im Menü ein Szenario (Zahl eingeben, `0` = Beenden). Dann kommt alle
 | `U` | Messwert-Anzeige **ab**- bzw. wieder **an**melden (zeigt `Dispose`!) |
 | `Q` | Zurück zum Menü (die Station wird gestoppt) |
 
-### Web-App starten
+### Stufe 2: Web-App starten
 
 ```bash
 dotnet run --project src/WeatherStation.Web
@@ -117,7 +159,13 @@ Die Tests liegen in `tests/WeatherStation.Tests`. Sie sind auch eine gute Dokume
 WeatherStation/
 ├── docs/PLAN.md                     Umsetzungsplan (für Lehrende / Neugierige)
 ├── src/
-│   ├── WeatherStation.Core/         DER KERN – keine UI-Abhängigkeit
+│   ├── WeatherStation.Beginner/     STUFE 1 – Einstieg: nur Observer, ohne Threads
+│   │   ├── WeatherReading.cs        Messwert (Time, Temperature, WindSpeed)
+│   │   ├── IWeatherObserver.cs      Das eigene Observer-Interface
+│   │   ├── Station.cs               Subject: List, Subscribe, Unsubscribe, Benachrichtigen
+│   │   ├── Observers/               ScreenDisplay, FrostWarner, StormWarner, HighestTemperature
+│   │   └── Program.cs               Die geführte Geschichte
+│   ├── WeatherStation.Core/         STUFE 2 – DER KERN – keine UI-Abhängigkeit
 │   │   ├── Models/                  WeatherReading, WeatherWarning, WarningLevel, WarningType
 │   │   ├── Observer/                Observer-Baukasten: Subject<T>, ActionObserver<T>,
 │   │   │                            ObservableExtensions (Subscribe/Where), INamedObserver, ObserverError
@@ -130,11 +178,11 @@ WeatherStation/
 │   │   │   │                        ScenarioCatalog, ISensor
 │   │   │   └── Sensors/             Die konkreten Sensoren (internal): CycleSensor, StormSensor, ...
 │   │   └── Settings/                WarningSettings (Singleton)
-│   ├── WeatherStation.ConsoleApp/   Konsole
+│   ├── WeatherStation.ConsoleApp/   Stufe 2: Konsole
 │   │   ├── Program.cs               Startpunkt (kurz)
 │   │   ├── WeatherConsole.cs        Menü und Simulationsschleife
 │   │   └── Observers/               ReadingPrinter, WarningPrinter
-│   └── WeatherStation.Web/          Blazor Server
+│   └── WeatherStation.Web/          Stufe 2: Blazor Server
 │       ├── Program.cs               Dienste registrieren (Builder + Singleton)
 │       ├── Services/SimulationRunner.cs   Hintergrunddienst: alle 1,5 s ein Messwert
 │       └── Components/
@@ -150,6 +198,8 @@ Merke dir diese Regel: **Der Kern (`Core`) kennt keine Oberfläche. Die Oberflä
 ## 4. Die Patterns
 
 ### 4.1 Observer (Beobachter)
+
+> **Tipp zum Lesen:** In den Quelltexten von Stufe 2 findest du Kommentarblöcke mit **„FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen“**. Dort geht es um Thread-Sicherheit, Blazor-Details und Ähnliches. Die Grundidee verstehst du auch ohne sie. Die einfache Fassung des Musters ohne all das steht in `src/WeatherStation.Beginner`.
 
 #### Problem aus dem Alltag
 
@@ -852,7 +902,19 @@ Suche die Stelle im Code: `ToggleReadingPrinter` in `WeatherConsole.cs`.
 
 Die Aufgaben werden schwieriger. Mach zwischendurch `dotnet test`, um zu sehen, dass nichts kaputtgeht. Lösungen gibt es nicht, aber Hinweise zum Aufklappen.
 
-### Aufgabe 1 (leicht): Grenzwert ändern
+### Aufgabe 1 (sehr leicht, Stufe 1): Neuer Observer „HeatWarner“
+
+Schreibe im Projekt `src/WeatherStation.Beginner` einen neuen Observer `HeatWarner`, der ab **30 °C** eine Hitzewarnung ausgibt. Melde ihn in `Program.cs` an der Station an und starte das Programm.
+
+**Start:** `src/WeatherStation.Beginner/Observers/FrostWarner.cs`.
+
+<details>
+<summary>Hinweis</summary>
+
+Kopiere `FrostWarner`, benenne die Klasse um und drehe den Vergleich um (`>=` statt `<=`). Danach fehlt nur noch das `Subscribe` in `Program.cs`. Kommt die Warnung an? Prüfe: Musstest du an der `Station` etwas ändern? (Nein, das ist der Kern des Observer-Musters.)
+</details>
+
+### Aufgabe 2 (leicht): Grenzwert ändern
 
 Ändere im Singleton den Hitze-Grenzwert von 30 °C auf 26 °C (und den Entwarnungswert auf 24 °C, sonst wirft `HeatRule` eine Exception). Starte die Hitzewelle und beobachte, was passiert. Passe danach alle Tests an, die jetzt fehlschlagen.
 
@@ -864,7 +926,7 @@ Die Aufgaben werden schwieriger. Mach zwischendurch `dotnet test`, um zu sehen, 
 Die Regel-Tests (`HysteresisRuleTests.cs`) übergeben ihre Werte selbst und sollten grün bleiben. Schau dir an, welche Tests trotzdem rot werden. Genau da hängt etwas am Singleton. Warum ist das ein Hinweis auf globalen Zustand?
 </details>
 
-### Aufgabe 2 (leicht bis mittel): Neuer Observer „CSV-Logger“
+### Aufgabe 3 (leicht bis mittel): Neuer Observer „CSV-Logger“
 
 Schreibe einen Observer `CsvLogger : IObserver<WeatherReading>`, der jeden Messwert als Zeile in eine Datei schreibt (Zeit;Temperatur;Feuchte;Druck;Wind). Melde ihn in der Konsole an und beim Ende wieder ab. Datei schließen bei `OnCompleted` nicht vergessen!
 
@@ -876,7 +938,7 @@ Schreibe einen Observer `CsvLogger : IObserver<WeatherReading>`, der jeden Messw
 Schreibe die Zeile mit `StreamWriter` (bzw. `File.AppendAllText`). Für Zahlen nimm `CultureInfo.InvariantCulture`, sonst steht in der CSV ein Komma mitten in der Zahl. Was soll bei `OnError` passieren? Denk auch an `INamedObserver`, damit dein Logger im Labor einen Namen hat.
 </details>
 
-### Aufgabe 3 (mittel): Neue Regel „Starkregen / hohe Luftfeuchte“
+### Aufgabe 4 (mittel): Neue Regel „Starkregen / hohe Luftfeuchte“
 
 Schreibe eine Regel `HumidityRule : IWarningRule`, die bei Luftfeuchte >= 95 % warnt und bei <= 85 % entwarnt (Hysterese!). Registriere sie im Builder und prüfe sie mit einem Test.
 
@@ -888,7 +950,7 @@ Schreibe eine Regel `HumidityRule : IWarningRule`, die bei Luftfeuchte >= 95 % w
 Die Regel bekommt ihre Grenzwerte im Konstruktor (nicht aus `WarningSettings.Instance` lesen, siehe Singleton-Kapitel). Für die Meldung brauchst du eine neue statische Methode in `WeatherWarning` und vermutlich einen neuen Wert in `WarningType`. Der Sturm-Sensor erreicht 90 % Luftfeuchte. Welches Szenario würde bei 95 % auslösen, und was musst du dort ändern, um es zu testen? Schreibe erst den Test (Vorbild `HysteresisRuleTests.cs`).
 </details>
 
-### Aufgabe 4 (mittel): Neues Szenario „Gewitter“ (Factory Method)
+### Aufgabe 5 (mittel): Neues Szenario „Gewitter“ (Factory Method)
 
 Erstelle `ThunderstormScenario` mit passendem `ThunderstormSensor`: Druck fällt schnell, Wind steigt kurz stark an, Temperatur fällt um mehr als 3 °C. Es soll ohne weitere Änderung in Konsole und Web im Menü erscheinen.
 
@@ -900,7 +962,7 @@ Erstelle `ThunderstormScenario` mit passendem `ThunderstormSensor`: Druck fällt
 Du brauchst zwei neue Klassen: einen Sensor (Kurven als Stützpunkte, siehe `CycleSensor.Curve`) und ein Szenario, das `CreateSensor` überschreibt. Vergiss den Eintrag in `ScenarioCatalog` nicht. Alle Werte müssen die Plausibilitätsprüfung in `Station.Validate` bestehen. Wenn du das Muster verstanden hast, musstest du **keine** Zeile in `WeatherConsole.cs` oder `SimulationRunner.cs` ändern. Stimmt das bei dir? Ergänze einen Test in `ScenarioTests.cs`.
 </details>
 
-### Aufgabe 5 (mittel): Das Speicherleck finden
+### Aufgabe 6 (mittel): Das Speicherleck finden
 
 Baue absichtlich ein Speicherleck ein und beweise es: Kommentiere in `Warnings.razor` das `_subscription?.Dispose();` in `Dispose()` aus. Öffne dann mehrmals die Seite „Warnungen“ und wechsle zu anderen Seiten.
 
@@ -914,7 +976,7 @@ Beantworte: Was siehst du im **Observer-Labor** in der Liste „Beobachter des W
 Jede neue Seiteninstanz meldet sich an (`"Warnungen-Tabelle"`), aber keine ab. Die `Station` bzw. der `WarningService` sind Singletons und leben, solange die App läuft. Sie halten die Seiten am Leben. Achte auch auf das `_disposed`-Flag: Warum reicht es allein nicht?
 </details>
 
-### Aufgabe 6 (anspruchsvoll): Ein Observer meldet sich selbst ab
+### Aufgabe 7 (anspruchsvoll): Ein Observer meldet sich selbst ab
 
 Schreibe einen Observer, der sich nach dem **dritten** empfangenen Messwert **selbst abmeldet** (in `OnNext`). Teste ihn: Was geht schief, wenn `Subject<T>` mit einer normalen `List<T>` und `foreach` arbeiten würde?
 

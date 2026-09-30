@@ -24,6 +24,11 @@
             .Subscribe("Toast-Anzeige", ShowToast);
     }
 
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Blazor-spezifisch: Meldungen kommen aus dem Hintergrund-Thread. InvokeAsync wechselt
+    // in den UI-Kontext, das _disposed-Flag fängt Meldungen ab, die noch "unterwegs" sind.
+    // ------------------------------------------------------------
     private void ShowToast(WeatherWarning warning)
     {
         // Diese Methode wird vom Hintergrund-Thread der Simulation aufgerufen,

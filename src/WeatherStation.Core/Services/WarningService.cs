@@ -13,6 +13,10 @@ namespace WeatherStation.Core.Services;
 // ============================================================
 public sealed class WarningService : Subject<WeatherWarning>, IObserver<WeatherReading>, INamedObserver
 {
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Thread-Sicherheit: Die Regeln haben Zustand und werden unter _ruleLock geprüft.
+    // ------------------------------------------------------------
     private readonly object _ruleLock = new();
     private readonly List<IWarningRule> _rules;
 
