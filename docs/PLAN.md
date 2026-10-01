@@ -358,3 +358,65 @@ Alle Werte müssen die Plausibilitätsprüfung der Station bestehen.
 - **Benachrichtigung an den Nutzer**: Komponente `WarningToaster` im MainLayout abonniert
   `Warnings.Where(w => w.Level >= WarningLevel.Warning)` → Lumeo `ToastService`
   (Warning = Warnung, Danger = Fehler-Variante).
+
+---
+
+## Phase 3 (01.10.2026) – Einfache Namen + ausführliche Erklärungen
+
+Entscheidung Nutzer: Stufe 2 verwendet **eigene, einfache Namen wie Stufe 1** statt
+`IObservable<T>`/`IObserver<T>` (OnNext/OnError/OnCompleted). Das .NET-Original wird
+nur noch in der Doku als „So heißt das in .NET“ erklärt. Grund: Lernende sollen die
+Zusammenhänge verstehen; `OnNext` + `IDisposable`-Token sind zusätzliche Hürden.
+
+### Neue Observer-API (ersetzt die alte, Namespace `WeatherStation.Core.Observer`)
+
+```csharp
+// Rolle: Observer. Gleiche Idee wie IWeatherObserver in Stufe 1 – nur generisch.
+public interface IWeatherObserver<T>
+{
+    string Name { get; }        // für Anzeige im Observer-Labor (ersetzt INamedObserver)
+    void Update(T value);       // = Stufe 1 Update(reading)   (.NET: OnNext)
+    void StationStopped();      // Station hat aufgehört       (.NET: OnCompleted)
+}
+
+// Rolle: Subject. Gleiche Idee wie Station in Stufe 1 – nur generisch und thread-sicher.
+public abstract class Subject<T>
+{
+    protected Subject(bool sendLastValueToNewObservers = false);
+    public void Subscribe(IWeatherObserver<T> observer);    // null -> ArgumentNullException; doppelt -> ignoriert; nach Stop -> observer.StationStopped() sofort
+    public void Unsubscribe(IWeatherObserver<T> observer);  // nicht angemeldet -> nichts passiert
+    public int ObserverCount { get; }
+    public IReadOnlyList<string> GetObserverNames();
+    public bool IsStopped { get; }
+    public event Action<ObserverError>? ObserverFailed;     // Fehlerisolation bleibt
+    protected void NotifyObservers(T value);                // = Stufe 1 NotifyObservers
+    protected void NotifyStopped();
+}
+public sealed record ObserverError(string ObserverName, Exception Error);
+
+// Observer aus einer Lambda (für kleine Zuhörer ohne eigene Klasse)
+public sealed class ActionObserver<T>(string name, Action<T> onUpdate, Action? onStopped = null) : IWeatherObserver<T>
+
+// Filter als "Hülle" um einen anderen Observer (ersetzt Where)
+public sealed class FilterObserver<T>(IWeatherObserver<T> target, Func<T, bool> filter) : IWeatherObserver<T>
+//   Name = target.Name + " (gefiltert)"; Update reicht nur passende Werte weiter; StationStopped immer.
+```
+Entfällt: `IObservable`/`IObserver`, `OnNext/OnError/OnCompleted`, `NotifyError`, `IDisposable`-Token,
+`Subscription`/`EmptySubscription`, `INamedObserver`, `ObservableExtensions` (`Where`, `Subscribe(name, action)`).
+Thread-Sicherheit (Copy-on-Write + Liefer-Lock, Replay ohne Race, nach Stop keine Meldung) bleibt,
+als „FÜR FORTGESCHRITTENE“ markiert.
+
+### Umbenennungen
+- `Station.Report(reading)` → `Station.SetReading(reading)` (wie Stufe 1). `Stop()` bleibt.
+- `WarningService`: implementiert `IWeatherObserver<WeatherReading>` (`Update`, `StationStopped`), ist `Subject<WeatherWarning>`.
+- `WarningHistory`, `ReadingHistory`, `WeatherStatistics`: `IWeatherObserver<...>`.
+- Alles andere (Regeln, Builder, Szenarien, Settings, Modelle) unverändert.
+
+### Doku (neu)
+- `docs/patterns/Observer.md`, `Builder.md`, `FactoryMethod.md`, `Singleton.md` – je: Alltagsvergleich,
+  „Ohne Pattern“ (Code + Probleme) → „Mit Pattern“, Schritt-für-Schritt-Funktionsweise, Klassen & Zusammenhänge
+  (Mermaid), Wo im Projekt, Vorteile/Nachteile, typische Fehler, „So heißt das in .NET/anderswo“, Quiz.
+- `docs/CODE-RUNDGANG.md` – „Folge dem Messwert“ Datei für Datei.
+- README verschlankt: Überblick, Lernpfad, Schnellstart, Links auf die Kapitel, Übungen.
+- Blazor: `/muster` wird Übersicht, je Pattern eine Erklärseite `/muster/observer`, `/muster/builder`,
+  `/muster/factory-method`, `/muster/singleton`.

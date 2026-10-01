@@ -15,17 +15,17 @@ public class ScenarioTests
     }
 
     // Lässt einen Sensor "steps" Schritte laufen und gibt alle Warnungen zurück.
-    // Station.Report prüft dabei jeden Messwert auf Plausibilität (sonst Exception).
+    // Station.SetReading prüft dabei jeden Messwert auf Plausibilität (sonst Exception).
     private static List<WeatherWarning> Run(WeatherScenario scenario, int steps)
     {
         WeatherSystem system = BuildSystem();
         var warnings = new List<WeatherWarning>();
-        system.Warnings.Subscribe("Test", warnings.Add);
+        system.Warnings.Subscribe(new ActionObserver<WeatherWarning>("Test", warnings.Add));
         ISensor sensor = scenario.Start(Start);
 
         for (int step = 0; step < steps; step++)
         {
-            system.Station.Report(sensor.ReadNext());
+            system.Station.SetReading(sensor.ReadNext());
         }
 
         Assert.Equal(steps, system.Station.ReadingCount);
@@ -182,7 +182,7 @@ public class ScenarioTests
     {
         WeatherScenario scenario = key == "random" ? new RandomScenario(seed: 7) : ScenarioCatalog.Find(key);
 
-        // 1000 Schritte = mehr als 13 Zyklen; Station.Report wirft bei unplausiblen Werten.
+        // 1000 Schritte = mehr als 13 Zyklen; Station.SetReading wirft bei unplausiblen Werten.
         Run(scenario, 1000);
     }
 
@@ -275,7 +275,7 @@ public class ScenarioTests
         ISensor stormSensor = new StormScenario().Start(Start);
         for (int step = 0; step < 10; step++)
         {
-            system.Station.Report(stormSensor.ReadNext());
+            system.Station.SetReading(stormSensor.ReadNext());
         }
 
         DateTime nextStart = system.Station.LastReading!.Time.AddMinutes(10);

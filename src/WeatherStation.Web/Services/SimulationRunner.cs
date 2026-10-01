@@ -41,7 +41,7 @@ public sealed class SimulationRunner : BackgroundService
     }
 
     // Wird ausgelöst, wenn sich Szenario oder Pause-Zustand ändern.
-    // Seiten, die das anzeigen, melden sich hier an (und in Dispose wieder ab!).
+    // Seiten, die das anzeigen, melden sich hier an (und in Dispose per Unsubscribe wieder ab!).
     public event Action? StateChanged;
 
     public bool IsRunning
@@ -106,7 +106,7 @@ public sealed class SimulationRunner : BackgroundService
                     {
                         // Lesen UND Melden im selben Lock: Ein Szenariowechsel kann
                         // nicht dazwischenfunken, die simulierte Zeit bleibt monoton.
-                        _system.Station.Report(_sensor.ReadNext());
+                        _system.Station.SetReading(_sensor.ReadNext());
                     }
                 }
             }

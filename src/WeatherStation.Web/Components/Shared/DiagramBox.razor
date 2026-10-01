@@ -1,0 +1,19 @@
+@* Ein Kasten im Ablaufdiagramm. Nur Theme-Token: Rand --border, Hervorhebung über --primary. *@
+<div class="@Css">
+    <div class="text-sm font-medium">@Title</div>
+    @if (!string.IsNullOrEmpty(Sub))
+    {
+        <div class="text-xs text-muted-foreground">@Sub</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+
+    [Parameter] public string? Sub { get; set; }
+
+    // Hervorgehobener Kasten (z. B. das Subject, der Builder).
+    [Parameter] public bool Highlight { get; set; }
+
+    private string Css => "rounded-md border px-3 py-2 " + (Highlight ? "border-primary" : "border-border");
+}

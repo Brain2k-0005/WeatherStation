@@ -1,19 +1,22 @@
 using System.Globalization;
 using WeatherStation.Core.Models;
+using WeatherStation.Core.Observer;
 
 namespace WeatherStation.ConsoleApp.Observers;
 
 // ============================================================
 // PATTERN: Observer – Rolle: konkreter Observer (Messwerte)
-// Der ReadingPrinter kennt nur IObserver<WeatherReading>, die Station
-// kennt nur IObservable<WeatherReading>. Beide wissen nichts voneinander.
+// Der ReadingPrinter kennt nur IWeatherObserver<WeatherReading>, die Station
+// kennt nur dieses Interface. Beide wissen nichts voneinander.
 // ============================================================
-public sealed class ReadingPrinter : IObserver<WeatherReading>
+public sealed class ReadingPrinter : IWeatherObserver<WeatherReading>
 {
     private static readonly CultureInfo German = CultureInfo.GetCultureInfo("de-DE");
 
+    public string Name => "Messwert-Anzeige";
+
     // Wird von der Station bei jedem neuen Messwert aufgerufen.
-    public void OnNext(WeatherReading reading)
+    public void Update(WeatherReading reading)
     {
         string time = reading.Time.ToString("HH:mm", German);
         string line = string.Format(German,
@@ -25,18 +28,11 @@ public sealed class ReadingPrinter : IObserver<WeatherReading>
         Console.ResetColor();
     }
 
-    public void OnError(Exception error)
-    {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine($"  [Messwert-Anzeige] Fehler: {error.Message}");
-        Console.ResetColor();
-    }
-
     // Die Station wurde gestoppt: keine Messwerte mehr.
-    public void OnCompleted()
+    public void StationStopped()
     {
         Console.ForegroundColor = ConsoleColor.DarkGray;
-        Console.WriteLine("  [Messwert-Anzeige] Station beendet (OnCompleted).");
+        Console.WriteLine("  [Messwert-Anzeige] Station beendet (StationStopped).");
         Console.ResetColor();
     }
 }

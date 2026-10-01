@@ -1,0 +1,52 @@
+@page "/muster/factory-method"
+@inject SimulationRunner Runner
+
+<PageTitle>Factory Method - Design Patterns - Wetterstation</PageTitle>
+
+@* Lernseite zur Factory Method. Reine Anzeige aus ScenarioCatalog.All: Diese Seite kennt
+   keine einzige Szenario-Klasse beim Namen, genau wie die Konsole und das Szenario-Menü.
+   Das aktuelle Szenario wird beim Öffnen gelesen (kein Abonnement nötig). *@
+<PatternDetail Slug="factory-method">
+    <Diagram>
+        <div class="flex flex-col gap-2 md:flex-row md:items-center">
+            <DiagramBox Title="Aufrufer" Sub="SimulationRunner, Konsole: kennt nur ISensor" />
+            <DiagramArrow Label="Start()" />
+            <DiagramBox Title="WeatherScenario" Sub="gleicher Ablauf, ruft CreateSensor() auf" Highlight="true" />
+            <DiagramArrow Label="CreateSensor()" />
+            <div class="flex flex-col gap-2">
+                <DiagramBox Title="StormScenario" Sub="erzeugt StormSensor" />
+                <DiagramBox Title="FrostNightScenario" Sub="erzeugt FrostNightSensor" />
+                <DiagramBox Title="HeatWaveScenario" Sub="erzeugt HeatWaveSensor" />
+                <DiagramBox Title="RandomScenario" Sub="erzeugt RandomSensor" />
+            </div>
+            <DiagramArrow Label="ISensor" />
+            <DiagramBox Title="Sensor" Sub="liefert Messwerte mit ReadNext()" />
+        </div>
+    </Diagram>
+
+    <Live>
+        <PatternCard Title="Live: Die Szenarien aus dem ScenarioCatalog"
+                     Description="Diese Liste wird aus `ScenarioCatalog.All` gebaut. Ein neues Szenario würde hier ohne Änderung an dieser Seite erscheinen.">
+            <ul class="divide-y divide-border rounded-md border border-border">
+                @foreach (WeatherScenario scenario in ScenarioCatalog.All)
+                {
+                    <li class="flex flex-col gap-0.5 px-3 py-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="font-medium">@scenario.Name</span>
+                            <code>@scenario.Key</code>
+                            @if (scenario.Key == Runner.CurrentScenario.Key)
+                            {
+                                <span class="ws-pill ws-pill-status"><span class="ws-dot ws-dot-emerald" aria-hidden="true"></span>läuft gerade</span>
+                            }
+                        </div>
+                        <div class="text-muted-foreground">@scenario.Description</div>
+                    </li>
+                }
+            </ul>
+            <p class="text-muted-foreground">
+                Szenarien wechselst du im Observer-Labor. Der Wechsel ruft nur <code>Start()</code> auf:
+                Der <code>SimulationRunner</code> weiß nie, welcher Sensor dahintersteckt.
+            </p>
+        </PatternCard>
+    </Live>
+</PatternDetail>

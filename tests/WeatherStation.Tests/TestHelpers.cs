@@ -6,22 +6,23 @@ namespace WeatherStation.Tests;
 // Kleines Subject, das die geschützten Methoden von Subject<T> für Tests öffentlich macht.
 public sealed class TestSubject<T> : Subject<T>
 {
-    public TestSubject(bool replayLastValue = false) : base(replayLastValue)
+    public TestSubject(bool sendLastValueToNewObservers = false) : base(sendLastValueToNewObservers)
     {
     }
 
-    public void Publish(T value) => Notify(value);
+    public void Publish(T value) => NotifyObservers(value);
 
-    public void Complete() => NotifyCompleted();
-
-    public void Fail(Exception error) => NotifyError(error);
+    public void Stop() => NotifyStopped();
 }
 
 // Observer, der alles aufschreibt, was er empfängt.
-public sealed class RecordingObserver<T> : IObserver<T>
+public sealed class RecordingObserver<T> : IWeatherObserver<T>
 {
     private readonly object _lock = new();
     private readonly List<T> _values = new();
+    private int _stoppedCount;
+
+    public string Name => "Recorder";
 
     public List<T> Values
     {
@@ -34,10 +35,18 @@ public sealed class RecordingObserver<T> : IObserver<T>
         }
     }
 
-    public int CompletedCount { get; private set; }
-    public List<Exception> Errors { get; } = new();
+    public int StoppedCount
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _stoppedCount;
+            }
+        }
+    }
 
-    public void OnNext(T value)
+    public void Update(T value)
     {
         lock (_lock)
         {
@@ -45,9 +54,13 @@ public sealed class RecordingObserver<T> : IObserver<T>
         }
     }
 
-    public void OnError(Exception error) => Errors.Add(error);
-
-    public void OnCompleted() => CompletedCount++;
+    public void StationStopped()
+    {
+        lock (_lock)
+        {
+            _stoppedCount++;
+        }
+    }
 }
 
 public static class TestData

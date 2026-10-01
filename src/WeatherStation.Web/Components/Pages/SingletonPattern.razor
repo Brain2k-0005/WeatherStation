@@ -1,0 +1,63 @@
+@page "/muster/singleton"
+
+<PageTitle>Singleton - Design Patterns - Wetterstation</PageTitle>
+
+@* Lernseite zum Singleton. Reine Anzeige, kein Abonnement und kein Dispose nötig. *@
+<PatternDetail Slug="singleton">
+    <Diagram>
+        <div class="flex flex-col gap-2 md:flex-row md:items-center">
+            <div class="flex flex-col gap-2">
+                <DiagramBox Title="WeatherStationBuilder" Sub="liest die Grenzwerte" />
+                <DiagramBox Title="Konsole (PrintLimits)" Sub="zeigt die Grenzwerte" />
+                <DiagramBox Title="Diese Seite" Sub="zeigt InstanceId und Grenzwerte" />
+            </div>
+            <DiagramArrow Label="WarningSettings.Instance" />
+            <DiagramBox Title="WarningSettings" Sub="genau EIN Objekt, privater Konstruktor" Highlight="true" />
+        </div>
+    </Diagram>
+
+    <Live>
+        @* --- Singleton-Nachweis --- *@
+        <PatternCard Title="Singleton-Nachweis"
+                     Description="Jeder Aufruf von `WarningSettings.Instance` liefert dasselbe Objekt, egal aus welchem Browser-Tab.">
+            <Descriptions Column="2">
+                <DescriptionsItem Label="InstanceId">
+                    <span class="font-mono text-sm">@_settings.InstanceId</span>
+                </DescriptionsItem>
+                <DescriptionsItem Label="Erstellt am">
+                    <span class="tabular-nums">@Display.DateAndTime(_settings.CreatedAt)</span>
+                </DescriptionsItem>
+                <DescriptionsItem Label="Zweiter Aufruf, gleiche Instanz?">
+                    @(ReferenceEquals(_settings, WarningSettings.Instance) ? "Ja, dieselbe Instanz" : "Nein")
+                </DescriptionsItem>
+                <DescriptionsItem Label="Zweite InstanceId">
+                    <span class="font-mono text-sm">@WarningSettings.Instance.InstanceId</span>
+                </DescriptionsItem>
+            </Descriptions>
+            <p class="text-muted-foreground">
+                Öffne die Seite in einem zweiten Tab: <code>InstanceId</code> und Erstellzeit sind dieselben,
+                bis die App neu gestartet wird. Die Konsolen-App ist ein anderes Programm und hat eine eigene Instanz.
+            </p>
+        </PatternCard>
+
+        @* --- Grenzwerte --- *@
+        <PatternCard Title="Grenzwerte" Description="Alle Werte stammen aus dem Singleton `WarningSettings` und sind nur lesbar.">
+            <Descriptions Column="2">
+                <DescriptionsItem Label="Temperaturänderung ab">@Display.Number(_settings.TemperatureChangeLimit) °C</DescriptionsItem>
+                <DescriptionsItem Label="Frostwarnung bei höchstens">@Display.Number(_settings.FrostLimit) °C</DescriptionsItem>
+                <DescriptionsItem Label="Frost-Entwarnung ab">@Display.Number(_settings.FrostClearLimit) °C</DescriptionsItem>
+                <DescriptionsItem Label="Hitzewarnung ab">@Display.Number(_settings.HeatLimit) °C</DescriptionsItem>
+                <DescriptionsItem Label="Hitze-Entwarnung bei höchstens">@Display.Number(_settings.HeatClearLimit) °C</DescriptionsItem>
+                <DescriptionsItem Label="Sturmwarnung ab">@Display.Number(_settings.StormLimit) km/h</DescriptionsItem>
+                <DescriptionsItem Label="Sturm-Entwarnung bei höchstens">@Display.Number(_settings.StormClearLimit) km/h</DescriptionsItem>
+                <DescriptionsItem Label="Luftdruckfall ab">@Display.Number(_settings.PressureDropLimit) hPa</DescriptionsItem>
+                <DescriptionsItem Label="... innerhalb von">@_settings.PressureDropWindow.TotalHours.ToString("0.#") Stunden</DescriptionsItem>
+            </Descriptions>
+        </PatternCard>
+    </Live>
+</PatternDetail>
+
+@code {
+    // PATTERN: Singleton - so kommt man an die einzige Instanz. Es gibt kein "new WarningSettings()".
+    private readonly WarningSettings _settings = WarningSettings.Instance;
+}

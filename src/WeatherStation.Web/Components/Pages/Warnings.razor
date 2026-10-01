@@ -56,7 +56,7 @@
 </div>
 
 @code {
-    private IDisposable? _subscription;
+    private IWeatherObserver<WeatherWarning>? _observer;
     private bool _disposed;
     private IReadOnlyList<WeatherWarning> _warnings = [];
 
@@ -68,8 +68,11 @@
         // PATTERN: Observer - Rolle: Abonnent
         // Die Tabelle soll live mitwachsen. Deshalb meldet sich die Seite am
         // Warn-Dienst an und liest bei jeder neuen Warnung den Verlauf neu.
+        // Die Referenz im Feld _observer MUSS man behalten: Nur mit demselben Objekt
+        // kann man sich in Dispose wieder abmelden (Unsubscribe).
         // ============================================================
-        _subscription = Weather.Warnings.Subscribe("Warnungen-Tabelle", warning => Refresh());
+        _observer = new ActionObserver<WeatherWarning>("Warnungen-Tabelle", warning => Refresh());
+        Weather.Warnings.Subscribe(_observer);
     }
 
     // ------------------------------------------------------------
@@ -98,6 +101,6 @@
         // Abmelden, sonst Speicherleck: Der Warn-Dienst würde diese (längst geschlossene)
         // Seite weiter benachrichtigen und im Speicher festhalten.
         _disposed = true;
-        _subscription?.Dispose();
+        Weather.Warnings.Unsubscribe(_observer!);
     }
 }

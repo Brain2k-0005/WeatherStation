@@ -5,14 +5,8 @@
 <Lumeo.Text As="span" Size="sm" Weight="medium" Truncate="true">@CurrentTitle</Lumeo.Text>
 
 @code {
-    private string CurrentTitle
-    {
-        get
-        {
-            AppNavigation.NavItem? item = AppNavigation.Match(Nav.ToBaseRelativePath(Nav.Uri));
-            return item?.Label ?? "Wetterstation";
-        }
-    }
+    // Titel kommt aus AppNavigation, damit er auch auf Unterseiten (/muster/observer) stimmt.
+    private string CurrentTitle => AppNavigation.TitleFor(Nav.ToBaseRelativePath(Nav.Uri));
 
     protected override void OnInitialized()
     {

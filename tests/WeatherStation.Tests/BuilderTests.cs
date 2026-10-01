@@ -98,9 +98,9 @@ public class BuilderTests
         WeatherSystem second = builder.Build();
 
         // Das erste System hat Sturm und damit eine aktive Warnung ...
-        first.Station.Report(TestData.Reading(windSpeed: 80));
+        first.Station.SetReading(TestData.Reading(windSpeed: 80));
         // ... das zweite muss trotzdem selbst warnen (kein geteilter Zustand).
-        second.Station.Report(TestData.Reading(windSpeed: 80));
+        second.Station.SetReading(TestData.Reading(windSpeed: 80));
 
         Assert.Equal(2, createdRules);
         Assert.Equal(1, first.WarningHistory.Count);
@@ -124,7 +124,7 @@ public class BuilderTests
     {
         WeatherSystem system = new WeatherStationBuilder().SetName("Schule").AddFrostWarning().Build();
 
-        system.Station.Report(TestData.Reading(temperature: -3));
+        system.Station.SetReading(TestData.Reading(temperature: -3));
 
         Assert.Single(system.ReadingHistory.GetAll());
         Assert.Equal(1, system.Statistics.Count);
@@ -148,7 +148,7 @@ public class BuilderTests
         WeatherSystem first = builder.Build();
         WeatherSystem second = builder.Build();
 
-        first.Station.Report(TestData.Reading(temperature: -3));
+        first.Station.SetReading(TestData.Reading(temperature: -3));
 
         Assert.NotSame(first.Station, second.Station);
         Assert.NotSame(first.Warnings, second.Warnings);
@@ -157,7 +157,7 @@ public class BuilderTests
         Assert.Equal(0, second.Station.ReadingCount);
 
         // Auch die Regel-Zustände sind getrennt: Das zweite System warnt selbst bei Frost.
-        second.Station.Report(TestData.Reading(temperature: -3));
+        second.Station.SetReading(TestData.Reading(temperature: -3));
         Assert.Equal(1, second.WarningHistory.Count);
     }
 
@@ -172,7 +172,7 @@ public class BuilderTests
 
         for (int index = 0; index < 5; index++)
         {
-            system.Station.Report(TestData.Reading(temperature: 10 + index, minutes: index * 10));
+            system.Station.SetReading(TestData.Reading(temperature: 10 + index, minutes: index * 10));
         }
 
         Assert.Equal([13.0, 14.0], system.ReadingHistory.GetAll().Select(r => r.Temperature).ToList());
@@ -185,7 +185,7 @@ public class BuilderTests
 
         for (int index = 0; index < 150; index++)
         {
-            system.Station.Report(TestData.Reading(minutes: index * 10));
+            system.Station.SetReading(TestData.Reading(minutes: index * 10));
         }
 
         Assert.Equal(144, system.ReadingHistory.GetAll().Count);
@@ -204,7 +204,7 @@ public class BuilderTests
 
         system.Station.Stop();
 
-        Assert.True(system.Station.IsCompleted);
-        Assert.True(system.Warnings.IsCompleted);
+        Assert.True(system.Station.IsStopped);
+        Assert.True(system.Warnings.IsStopped);
     }
 }

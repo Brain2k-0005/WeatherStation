@@ -1,0 +1,29 @@
+@using System.Text.RegularExpressions
+
+@* Kleiner Text-Helfer für die Lernseiten: macht aus `so` Code und aus **so** fetten Text.
+   Mehr braucht es nicht, deshalb kein Markdown-Paket. Blazor kodiert alles automatisch
+   (kein MarkupString, also kein XSS-Risiko). *@
+@foreach (string part in Parts())
+{
+    if (part.StartsWith("**") && part.EndsWith("**") && part.Length > 4)
+    {
+        <strong class="font-medium text-foreground">@part[2..^2]</strong>
+    }
+    else if (part.StartsWith('`') && part.EndsWith('`') && part.Length > 2)
+    {
+        @* Inline-Code: Geist Mono kommt aus css/app.css (Regel für code), Hintergrund aus dem Token --muted. *@
+        <code class="rounded bg-muted px-1 py-0.5 text-[0.85em] text-foreground">@part[1..^1]</code>
+    }
+    else
+    {
+        @part
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+
+    // Zerlegt den Text in normale, **fette** und `Code`-Stücke (die Trennzeichen bleiben erhalten).
+    private IEnumerable<string> Parts() =>
+        Regex.Split(Text, @"(\*\*.+?\*\*|`.+?`)").Where(p => p.Length > 0);
+}

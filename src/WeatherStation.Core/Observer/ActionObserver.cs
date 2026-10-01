@@ -1,28 +1,27 @@
 namespace WeatherStation.Core.Observer;
 
-// Observer aus Lambdas – spart für jede Kleinigkeit eine eigene Klasse.
-public sealed class ActionObserver<T> : IObserver<T>, INamedObserver
+// ============================================================
+// PATTERN: Observer – Rolle: konkreter Observer aus einer Lambda
+// Für kleine Zuhörer, bei denen sich eine eigene Klasse nicht lohnt:
+//   new ActionObserver<WeatherReading>("Anzeige", reading => Console.WriteLine(reading));
+// ============================================================
+public sealed class ActionObserver<T> : IWeatherObserver<T>
 {
-    private readonly Action<T> _onNext;
-    private readonly Action<Exception>? _onError;
-    private readonly Action? _onCompleted;
+    private readonly Action<T> _onUpdate;
+    private readonly Action? _onStopped;
 
-    public ActionObserver(string name, Action<T> onNext,
-                          Action<Exception>? onError = null, Action? onCompleted = null)
+    public ActionObserver(string name, Action<T> onUpdate, Action? onStopped = null)
     {
         ArgumentNullException.ThrowIfNull(name);
-        ArgumentNullException.ThrowIfNull(onNext);
+        ArgumentNullException.ThrowIfNull(onUpdate);
         Name = name;
-        _onNext = onNext;
-        _onError = onError;
-        _onCompleted = onCompleted;
+        _onUpdate = onUpdate;
+        _onStopped = onStopped;
     }
 
     public string Name { get; }
 
-    public void OnNext(T value) => _onNext(value);
+    public void Update(T value) => _onUpdate(value);
 
-    public void OnError(Exception error) => _onError?.Invoke(error);
-
-    public void OnCompleted() => _onCompleted?.Invoke();
+    public void StationStopped() => _onStopped?.Invoke();
 }

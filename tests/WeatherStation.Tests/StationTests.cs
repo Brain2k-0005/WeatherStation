@@ -15,14 +15,14 @@ public class StationTests
     }
 
     [Fact]
-    public void Report_ValidReading_NotifiesObserverAndUpdatesState()
+    public void SetReading_ValidReading_NotifiesObserverAndUpdatesState()
     {
         var station = new Station("Schule");
         var observer = new RecordingObserver<WeatherReading>();
         station.Subscribe(observer);
         WeatherReading reading = TestData.Reading();
 
-        station.Report(reading);
+        station.SetReading(reading);
 
         Assert.Equal([reading], observer.Values);
         Assert.Equal(reading, station.LastReading);
@@ -40,11 +40,11 @@ public class StationTests
     }
 
     [Fact]
-    public void Subscribe_AfterReading_ReplaysLastReading()
+    public void Subscribe_AfterReading_SendsLastReadingToNewObserver()
     {
         var station = new Station("Schule");
         WeatherReading reading = TestData.Reading();
-        station.Report(reading);
+        station.SetReading(reading);
         var observer = new RecordingObserver<WeatherReading>();
 
         station.Subscribe(observer);
@@ -62,14 +62,14 @@ public class StationTests
     [InlineData(15, 50, 1013, -0.1)]
     [InlineData(15, 50, 1013, 300.1)]
     [InlineData(double.NaN, 50, 1013, 10)]
-    public void Report_ImplausibleValue_ThrowsAndIsNotDistributed(double temperature, double humidity, double pressure, double wind)
+    public void SetReading_ImplausibleValue_ThrowsAndIsNotDistributed(double temperature, double humidity, double pressure, double wind)
     {
         var station = new Station("Schule");
         var observer = new RecordingObserver<WeatherReading>();
         station.Subscribe(observer);
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            station.Report(TestData.Reading(temperature, humidity, pressure, wind)));
+            station.SetReading(TestData.Reading(temperature, humidity, pressure, wind)));
 
         Assert.Empty(observer.Values);
         Assert.Equal(0, station.ReadingCount);
@@ -79,17 +79,17 @@ public class StationTests
     [Theory]
     [InlineData(-60, 0, 850, 0)]
     [InlineData(60, 100, 1100, 300)]
-    public void Report_ValuesOnTheBoundary_AreAccepted(double temperature, double humidity, double pressure, double wind)
+    public void SetReading_ValuesOnTheBoundary_AreAccepted(double temperature, double humidity, double pressure, double wind)
     {
         var station = new Station("Schule");
 
-        station.Report(TestData.Reading(temperature, humidity, pressure, wind));
+        station.SetReading(TestData.Reading(temperature, humidity, pressure, wind));
 
         Assert.Equal(1, station.ReadingCount);
     }
 
     [Fact]
-    public void Stop_CompletesObserversAndSubsequentReportThrows()
+    public void Stop_NotifiesObserversAndSubsequentSetReadingThrows()
     {
         var station = new Station("Schule");
         var observer = new RecordingObserver<WeatherReading>();
@@ -97,9 +97,9 @@ public class StationTests
 
         station.Stop();
 
-        Assert.Equal(1, observer.CompletedCount);
-        Assert.True(station.IsCompleted);
-        Assert.Throws<InvalidOperationException>(() => station.Report(TestData.Reading()));
+        Assert.Equal(1, observer.StoppedCount);
+        Assert.True(station.IsStopped);
+        Assert.Throws<InvalidOperationException>(() => station.SetReading(TestData.Reading()));
     }
 
     [Fact]
@@ -112,13 +112,13 @@ public class StationTests
     }
 
     [Fact]
-    public void ReadingCount_CountsAllReports()
+    public void ReadingCount_CountsAllReadings()
     {
         var station = new Station("Schule");
 
         for (int index = 0; index < 5; index++)
         {
-            station.Report(TestData.Reading(minutes: index * 10));
+            station.SetReading(TestData.Reading(minutes: index * 10));
         }
 
         Assert.Equal(5, station.ReadingCount);

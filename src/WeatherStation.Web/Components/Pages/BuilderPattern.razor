@@ -1,0 +1,63 @@
+@page "/muster/builder"
+@inject WeatherSystem Weather
+
+<PageTitle>Builder - Design Patterns - Wetterstation</PageTitle>
+
+@* Lernseite zum Builder-Muster. Reine Anzeige: Das System wird beim Start gebaut und ändert
+   sich danach nicht mehr, deshalb braucht die Seite keine Anmeldung und kein Dispose. *@
+<PatternDetail Slug="builder">
+    <Diagram>
+        <div class="flex flex-col gap-2 md:flex-row md:items-center">
+            <div class="flex flex-col gap-2">
+                <DiagramBox Title="SetName(...)" Sub="Wunsch 1" />
+                <DiagramBox Title="AddAllWarnings()" Sub="Wunsch 2" />
+                <DiagramBox Title="KeepReadings(144)" Sub="Wunsch 3" />
+            </div>
+            <DiagramArrow Label="merkt sich" />
+            <DiagramBox Title="WeatherStationBuilder" Sub="sammelt nur, baut noch nichts" Highlight="true" />
+            <DiagramArrow Label="Build()" />
+            <div class="flex flex-col gap-2">
+                <DiagramBox Title="WeatherSystem" Sub="das fertige, geprüfte Produkt" Highlight="true" />
+                <DiagramBox Title="Station, Warn-Dienst, Verlauf, Statistik" Sub="richtig verkabelt" />
+            </div>
+        </div>
+    </Diagram>
+
+    <Live>
+        <PatternCard Title="Live: So wurde dieses System gebaut"
+                     Description="Die Werte stammen aus dem WeatherSystem, das Program.cs beim Start per Builder erzeugt hat.">
+            <Descriptions Column="2">
+                <DescriptionsItem Label="Name (SetName)">@Weather.Station.Name</DescriptionsItem>
+                <DescriptionsItem Label="Anzahl Regeln"><span class="tabular-nums">@_rules.Count</span></DescriptionsItem>
+            </Descriptions>
+
+            <div>
+                <div class="mb-1 font-medium">Regeln (AddAllWarnings)</div>
+                <ul class="divide-y divide-border rounded-md border border-border">
+                    @foreach (string rule in _rules)
+                    {
+                        <li class="flex items-center gap-2 px-3 py-1.5">
+                            <SvgGlyph Svg="@(Lucide.ShieldCheck)" Class="size-4 shrink-0 text-muted-foreground" />
+                            <span class="min-w-0 truncate">@rule</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+            <p class="text-muted-foreground">
+                Jede Regel steht für einen <code>Add...Warning()</code>-Aufruf. Fehlte der Aufruf, gäbe es die Regel nicht.
+                Ließe man alle weg, würde <code>Build()</code> mit einer Fehlermeldung abbrechen.
+            </p>
+        </PatternCard>
+    </Live>
+</PatternDetail>
+
+@code {
+    // Die Regelnamen ändern sich nach dem Bauen nicht mehr, einmal lesen genügt.
+    private IReadOnlyList<string> _rules = [];
+
+    protected override void OnInitialized()
+    {
+        _rules = Weather.Warnings.RuleNames;
+    }
+}

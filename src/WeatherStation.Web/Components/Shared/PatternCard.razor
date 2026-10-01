@@ -1,0 +1,22 @@
+@* Abschnittskarte der Lernseiten, gleicher Aufbau wie die Karten der übrigen Seiten:
+   Rand statt Füllung (ws-card), Kopfzeile mit Titel und Beschreibung. *@
+<Card Variant="Card.CardVariant.Outline" Class="ws-card gap-0 py-0 min-w-0">
+    <CardHeader Class="!px-4 !py-3 border-b border-border">
+        <CardTitle Class="text-base font-semibold leading-snug">@Title</CardTitle>
+        @if (!string.IsNullOrEmpty(Description))
+        {
+            <CardDescription><PatternText Text="@Description" /></CardDescription>
+        }
+    </CardHeader>
+    <CardContent Class="!p-4 flex flex-col gap-3 text-sm">
+        @ChildContent
+    </CardContent>
+</Card>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+
+    [Parameter] public string? Description { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

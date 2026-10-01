@@ -8,7 +8,7 @@ namespace WeatherStation.Core.Observers;
 // Rechnet mit jedem Messwert Minimum, Maximum und Mittelwert mit.
 // Es werden keine Messwerte gespeichert, nur Summen – das spart Speicher.
 // ============================================================
-public sealed class WeatherStatistics : IObserver<WeatherReading>, INamedObserver
+public sealed class WeatherStatistics : IWeatherObserver<WeatherReading>
 {
     // ------------------------------------------------------------
     // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
@@ -90,7 +90,7 @@ public sealed class WeatherStatistics : IObserver<WeatherReading>, INamedObserve
         }
     }
 
-    public void OnNext(WeatherReading reading)
+    public void Update(WeatherReading reading)
     {
         lock (_lock)
         {
@@ -112,11 +112,8 @@ public sealed class WeatherStatistics : IObserver<WeatherReading>, INamedObserve
         }
     }
 
-    public void OnError(Exception error)
+    public void StationStopped()
     {
-    }
-
-    public void OnCompleted()
-    {
+        // Nichts zu tun: Der bisherige Stand bleibt einfach erhalten.
     }
 }

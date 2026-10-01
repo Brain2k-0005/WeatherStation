@@ -9,7 +9,7 @@ namespace WeatherStation.Core.Observers;
 // Der lock schützt die Liste, weil Meldungen aus einem Hintergrund-Thread
 // kommen, während die Oberfläche gleichzeitig liest.
 // ============================================================
-public sealed class WarningHistory : IObserver<WeatherWarning>, INamedObserver
+public sealed class WarningHistory : IWeatherObserver<WeatherWarning>
 {
     private const int MaxCount = 500;
 
@@ -50,7 +50,7 @@ public sealed class WarningHistory : IObserver<WeatherWarning>, INamedObserver
         }
     }
 
-    public void OnNext(WeatherWarning warning)
+    public void Update(WeatherWarning warning)
     {
         lock (_lock)
         {
@@ -63,11 +63,8 @@ public sealed class WarningHistory : IObserver<WeatherWarning>, INamedObserver
         }
     }
 
-    public void OnError(Exception error)
+    public void StationStopped()
     {
-    }
-
-    public void OnCompleted()
-    {
+        // Nichts zu tun: Der bisherige Stand bleibt einfach erhalten.
     }
 }

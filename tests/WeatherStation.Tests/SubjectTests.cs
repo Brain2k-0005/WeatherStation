@@ -9,11 +9,19 @@ public class SubjectTests
     {
         var subject = new TestSubject<int>();
 
-        Assert.Throws<ArgumentNullException>(() => subject.Subscribe((IObserver<int>)null!));
+        Assert.Throws<ArgumentNullException>(() => subject.Subscribe(null!));
     }
 
     [Fact]
-    public void Notify_WithTwoObservers_BothReceiveValuesInOrder()
+    public void Unsubscribe_NullObserver_ThrowsArgumentNullException()
+    {
+        var subject = new TestSubject<int>();
+
+        Assert.Throws<ArgumentNullException>(() => subject.Unsubscribe(null!));
+    }
+
+    [Fact]
+    public void NotifyObservers_WithTwoObservers_BothReceiveValuesInOrder()
     {
         var subject = new TestSubject<int>();
         var first = new RecordingObserver<int>();
@@ -29,14 +37,14 @@ public class SubjectTests
     }
 
     [Fact]
-    public void Subscribe_ThenDispose_ObserverGetsNoMoreValues()
+    public void Unsubscribe_ObserverGetsNoMoreValues()
     {
         var subject = new TestSubject<int>();
         var observer = new RecordingObserver<int>();
-        IDisposable token = subject.Subscribe(observer);
+        subject.Subscribe(observer);
         subject.Publish(1);
 
-        token.Dispose();
+        subject.Unsubscribe(observer);
         subject.Publish(2);
 
         Assert.Equal([1], observer.Values);
@@ -44,16 +52,30 @@ public class SubjectTests
     }
 
     [Fact]
-    public void Dispose_CalledTwice_DoesNotRemoveOtherSubscription()
+    public void Unsubscribe_UnknownObserver_DoesNothing()
+    {
+        var subject = new TestSubject<int>();
+        var known = new RecordingObserver<int>();
+        subject.Subscribe(known);
+
+        subject.Unsubscribe(new RecordingObserver<int>());
+        subject.Publish(5);
+
+        Assert.Equal(1, subject.ObserverCount);
+        Assert.Equal([5], known.Values);
+    }
+
+    [Fact]
+    public void Unsubscribe_CalledTwice_DoesNotRemoveOtherObserver()
     {
         var subject = new TestSubject<int>();
         var observer = new RecordingObserver<int>();
         var other = new RecordingObserver<int>();
-        IDisposable token = subject.Subscribe(observer);
+        subject.Subscribe(observer);
         subject.Subscribe(other);
 
-        token.Dispose();
-        token.Dispose();
+        subject.Unsubscribe(observer);
+        subject.Unsubscribe(observer);
         subject.Publish(5);
 
         Assert.Equal(1, subject.ObserverCount);
@@ -62,36 +84,31 @@ public class SubjectTests
     }
 
     [Fact]
-    public void Subscribe_SameObserverTwice_ReceivesTwiceAndEachTokenRemovesOne()
+    public void Subscribe_SameObserverTwice_IsIgnored()
     {
         var subject = new TestSubject<int>();
         var observer = new RecordingObserver<int>();
-        IDisposable first = subject.Subscribe(observer);
-        IDisposable second = subject.Subscribe(observer);
+        subject.Subscribe(observer);
+        subject.Subscribe(observer);
 
         subject.Publish(1);
-        Assert.Equal([1, 1], observer.Values);
 
-        first.Dispose();
         Assert.Equal(1, subject.ObserverCount);
-        subject.Publish(2);
-        Assert.Equal([1, 1, 2], observer.Values);
-
-        second.Dispose();
-        Assert.Equal(0, subject.ObserverCount);
+        Assert.Equal([1], observer.Values);
     }
 
     [Fact]
-    public void Notify_ObserverUnsubscribesItselfDuringNotify_NoExceptionAndOthersStillNotified()
+    public void NotifyObservers_ObserverUnsubscribesItselfDuringNotify_NoExceptionAndOthersStillNotified()
     {
         var subject = new TestSubject<int>();
-        IDisposable? token = null;
+        IWeatherObserver<int>? selfRemover = null;
         int selfCalls = 0;
-        token = subject.Subscribe("Selbstabmelder", _ =>
+        selfRemover = new ActionObserver<int>("Selbstabmelder", _ =>
         {
             selfCalls++;
-            token!.Dispose();
+            subject.Unsubscribe(selfRemover!);
         });
+        subject.Subscribe(selfRemover);
         var other = new RecordingObserver<int>();
         subject.Subscribe(other);
 
@@ -104,29 +121,29 @@ public class SubjectTests
     }
 
     [Fact]
-    public void Notify_ObserverSubscribesNewObserverDuringNotify_NewObserverStartsWithNextValue()
+    public void NotifyObservers_ObserverSubscribesNewObserverDuringNotify_NewObserverStartsWithNextValue()
     {
         var subject = new TestSubject<int>();
         var late = new RecordingObserver<int>();
         bool added = false;
-        subject.Subscribe("Anmelder", _ =>
+        subject.Subscribe(new ActionObserver<int>("Anmelder", _ =>
         {
             if (!added)
             {
                 added = true;
                 subject.Subscribe(late);
             }
-        });
+        }));
 
         subject.Publish(1);
         subject.Publish(2);
 
-        // Der neue Observer war beim ersten Notify noch nicht in der Momentaufnahme.
+        // Der neue Observer war beim ersten NotifyObservers noch nicht in der Momentaufnahme.
         Assert.Equal([2], late.Values);
     }
 
     [Fact]
-    public void Notify_FaultyObserver_OthersStillNotifiedAndObserverFailedRaised()
+    public void NotifyObservers_FaultyObserver_OthersStillNotifiedAndObserverFailedRaised()
     {
         var subject = new TestSubject<int>();
         var errors = new List<ObserverError>();
@@ -134,7 +151,7 @@ public class SubjectTests
         var before = new RecordingObserver<int>();
         var after = new RecordingObserver<int>();
         subject.Subscribe(before);
-        subject.Subscribe("Kaputt", _ => throw new InvalidOperationException("Absicht"));
+        subject.Subscribe(new ActionObserver<int>("Kaputt", _ => throw new InvalidOperationException("Absicht")));
         subject.Subscribe(after);
 
         subject.Publish(7);
@@ -148,122 +165,91 @@ public class SubjectTests
     }
 
     [Fact]
-    public void Notify_FaultyUnnamedObserver_ReportsTypeName()
+    public void NotifyObservers_FaultyObserverWithoutErrorHandler_DoesNotThrow()
     {
         var subject = new TestSubject<int>();
-        var errors = new List<ObserverError>();
-        subject.ObserverFailed += errors.Add;
-        subject.Subscribe(new ThrowingObserver());
-
-        subject.Publish(1);
-
-        Assert.Equal(nameof(ThrowingObserver), Assert.Single(errors).ObserverName);
-    }
-
-    [Fact]
-    public void Notify_FaultyObserverWithoutErrorHandler_DoesNotThrow()
-    {
-        var subject = new TestSubject<int>();
-        subject.Subscribe("Kaputt", _ => throw new InvalidOperationException());
+        subject.Subscribe(new ActionObserver<int>("Kaputt", _ => throw new InvalidOperationException()));
 
         subject.Publish(1);
     }
 
     [Fact]
-    public void GetObserverNames_ReturnsNamesOrTypeNames()
+    public void GetObserverNames_ReturnsNamesInSubscribeOrder()
     {
         var subject = new TestSubject<int>();
-        subject.Subscribe("Bildschirm", _ => { });
+        subject.Subscribe(new ActionObserver<int>("Bildschirm", _ => { }));
         subject.Subscribe(new RecordingObserver<int>());
 
         IReadOnlyList<string> names = subject.GetObserverNames();
 
-        Assert.Equal(["Bildschirm", "RecordingObserver`1"], names);
+        Assert.Equal(["Bildschirm", "Recorder"], names);
     }
 
     [Fact]
-    public void NotifyCompleted_CallsOnCompletedRemovesObserversAndIgnoresLaterValues()
+    public void NotifyStopped_CallsStationStoppedRemovesObserversAndIgnoresLaterValues()
     {
         var subject = new TestSubject<int>();
         var observer = new RecordingObserver<int>();
         subject.Subscribe(observer);
         subject.Publish(1);
 
-        subject.Complete();
+        subject.Stop();
         subject.Publish(2);
 
-        Assert.True(subject.IsCompleted);
-        Assert.Equal(1, observer.CompletedCount);
+        Assert.True(subject.IsStopped);
+        Assert.Equal(1, observer.StoppedCount);
         Assert.Equal([1], observer.Values);
         Assert.Equal(0, subject.ObserverCount);
     }
 
     [Fact]
-    public void NotifyCompleted_CalledTwice_ObserverCompletedOnlyOnce()
+    public void NotifyStopped_CalledTwice_ObserverStoppedOnlyOnce()
     {
         var subject = new TestSubject<int>();
         var observer = new RecordingObserver<int>();
         subject.Subscribe(observer);
 
-        subject.Complete();
-        subject.Complete();
+        subject.Stop();
+        subject.Stop();
 
-        Assert.Equal(1, observer.CompletedCount);
+        Assert.Equal(1, observer.StoppedCount);
     }
 
     [Fact]
-    public void NotifyError_CallsOnErrorAndCompletesSubject()
-    {
-        var subject = new TestSubject<int>();
-        var observer = new RecordingObserver<int>();
-        subject.Subscribe(observer);
-        var error = new InvalidOperationException("Fehler");
-
-        subject.Fail(error);
-        subject.Publish(1);
-
-        Assert.Same(error, Assert.Single(observer.Errors));
-        Assert.Equal(0, observer.CompletedCount);
-        Assert.Empty(observer.Values);
-        Assert.True(subject.IsCompleted);
-        Assert.Equal(0, subject.ObserverCount);
-    }
-
-    [Fact]
-    public void NotifyError_ObserverThrowsInOnError_OthersStillGetError()
+    public void NotifyStopped_ObserverThrowsInStationStopped_OthersStillGetStopped()
     {
         var subject = new TestSubject<int>();
         var errors = new List<ObserverError>();
         subject.ObserverFailed += errors.Add;
-        subject.Subscribe(new ActionObserver<int>("Kaputt", _ => { }, _ => throw new InvalidOperationException()));
+        subject.Subscribe(new ActionObserver<int>("Kaputt", _ => { }, () => throw new InvalidOperationException()));
         var other = new RecordingObserver<int>();
         subject.Subscribe(other);
 
-        subject.Fail(new Exception("x"));
+        subject.Stop();
 
-        Assert.Single(other.Errors);
-        Assert.Single(errors);
+        Assert.Equal(1, other.StoppedCount);
+        ObserverError error = Assert.Single(errors);
+        Assert.Equal("Kaputt", error.ObserverName);
     }
 
     [Fact]
-    public void Subscribe_AfterCompleted_CallsOnCompletedImmediatelyAndReturnsHarmlessToken()
+    public void Subscribe_AfterStopped_CallsStationStoppedImmediatelyAndDoesNotAdd()
     {
         var subject = new TestSubject<int>();
-        subject.Complete();
+        subject.Stop();
         var observer = new RecordingObserver<int>();
 
-        IDisposable token = subject.Subscribe(observer);
-        token.Dispose();
-        token.Dispose();
+        subject.Subscribe(observer);
+        subject.Unsubscribe(observer);
 
-        Assert.Equal(1, observer.CompletedCount);
+        Assert.Equal(1, observer.StoppedCount);
         Assert.Equal(0, subject.ObserverCount);
     }
 
     [Fact]
-    public void Subscribe_WithReplay_NewObserverImmediatelyGetsLastValue()
+    public void Subscribe_WithLastValue_NewObserverImmediatelyGetsLastValue()
     {
-        var subject = new TestSubject<int>(replayLastValue: true);
+        var subject = new TestSubject<int>(sendLastValueToNewObservers: true);
         subject.Publish(1);
         subject.Publish(2);
         var observer = new RecordingObserver<int>();
@@ -275,9 +261,9 @@ public class SubjectTests
     }
 
     [Fact]
-    public void Subscribe_WithReplayButNoValueYet_GetsNothing()
+    public void Subscribe_WithLastValueButNoValueYet_GetsNothing()
     {
-        var subject = new TestSubject<int>(replayLastValue: true);
+        var subject = new TestSubject<int>(sendLastValueToNewObservers: true);
         var observer = new RecordingObserver<int>();
 
         subject.Subscribe(observer);
@@ -286,7 +272,7 @@ public class SubjectTests
     }
 
     [Fact]
-    public void Subscribe_WithoutReplay_NewObserverGetsNoOldValue()
+    public void Subscribe_WithoutLastValue_NewObserverGetsNoOldValue()
     {
         var subject = new TestSubject<int>();
         subject.Publish(1);
@@ -298,21 +284,34 @@ public class SubjectTests
     }
 
     [Fact]
-    public void Subscribe_ReplayObserverThrows_ReportedAsObserverFailedAndStillSubscribed()
+    public void Subscribe_DuplicateObserver_DoesNotGetLastValueAgain()
     {
-        var subject = new TestSubject<int>(replayLastValue: true);
+        var subject = new TestSubject<int>(sendLastValueToNewObservers: true);
+        subject.Publish(1);
+        var observer = new RecordingObserver<int>();
+        subject.Subscribe(observer);
+
+        subject.Subscribe(observer);
+
+        Assert.Equal([1], observer.Values);
+    }
+
+    [Fact]
+    public void Subscribe_LastValueObserverThrows_ReportedAsObserverFailedAndStillSubscribed()
+    {
+        var subject = new TestSubject<int>(sendLastValueToNewObservers: true);
         var errors = new List<ObserverError>();
         subject.ObserverFailed += errors.Add;
         subject.Publish(1);
 
-        subject.Subscribe("Kaputt", _ => throw new InvalidOperationException());
+        subject.Subscribe(new ActionObserver<int>("Kaputt", _ => throw new InvalidOperationException()));
 
         Assert.Single(errors);
         Assert.Equal(1, subject.ObserverCount);
     }
 
     [Fact]
-    public void ConcurrentSubscribeNotifyDispose_DoesNotThrowAndEndsWithNoObservers()
+    public void ConcurrentSubscribeNotifyUnsubscribe_DoesNotThrowAndEndsWithNoExtraObservers()
     {
         var subject = new TestSubject<int>();
         var permanent = new RecordingObserver<int>();
@@ -322,10 +321,11 @@ public class SubjectTests
 
         Parallel.For(0, 2000, index =>
         {
-            IDisposable token = subject.Subscribe("Test " + index, _ => { });
+            var observer = new ActionObserver<int>("Test " + index, _ => { });
+            subject.Subscribe(observer);
             subject.Publish(index);
-            token.Dispose();
-            token.Dispose();
+            subject.Unsubscribe(observer);
+            subject.Unsubscribe(observer);
         });
 
         Assert.Equal(1, subject.ObserverCount);
@@ -334,9 +334,9 @@ public class SubjectTests
     }
 
     [Fact]
-    public async Task ConcurrentPublishAndSubscribeWithReplay_EveryObserverSeesValuesInOrderWithoutDuplicates()
+    public async Task ConcurrentPublishAndSubscribeWithLastValue_EveryObserverSeesValuesInOrderWithoutDuplicates()
     {
-        var subject = new TestSubject<int>(replayLastValue: true);
+        var subject = new TestSubject<int>(sendLastValueToNewObservers: true);
         var observers = new List<RecordingObserver<int>>();
 
         // Ein Thread meldet 0, 1, 2 ... während gleichzeitig neue Observer dazukommen.
@@ -356,7 +356,7 @@ public class SubjectTests
         }
         await publisher;
 
-        // Der Replay-Wert darf nie NACH einem neueren Wert ankommen.
+        // Der "letzte Wert" darf nie NACH einem neueren Wert ankommen.
         foreach (RecordingObserver<int> observer in observers)
         {
             List<int> values = observer.Values;
@@ -369,7 +369,7 @@ public class SubjectTests
     }
 
     [Fact]
-    public async Task ConcurrentPublishAndComplete_NoOnNextAfterOnCompleted()
+    public async Task ConcurrentPublishAndStop_NoUpdateAfterStationStopped()
     {
         for (int round = 0; round < 50; round++)
         {
@@ -384,32 +384,34 @@ public class SubjectTests
                     subject.Publish(value);
                 }
             });
-            subject.Complete();
+            subject.Stop();
             await publisher;
 
-            Assert.Equal("completed", observer.Events[^1]);
-            Assert.Equal(1, observer.Events.Count(e => e == "completed"));
+            Assert.Equal("stopped", observer.Events[^1]);
+            Assert.Equal(1, observer.Events.Count(e => e == "stopped"));
         }
     }
 
     [Fact]
-    public void Notify_ObserverCompletesSubjectDuringNotify_LaterObserversGetNoValueAfterCompleted()
+    public void NotifyObservers_ObserverStopsSubjectDuringNotify_LaterObserversGetNoUpdateAfterStop()
     {
         var subject = new TestSubject<int>();
-        subject.Subscribe("Stopper", _ => subject.Complete());
+        subject.Subscribe(new ActionObserver<int>("Stopper", _ => subject.Stop()));
         var later = new SequenceObserver();
         subject.Subscribe(later);
 
         subject.Publish(1);
 
-        Assert.Equal(["completed"], later.Events);
+        Assert.Equal(["stopped"], later.Events);
     }
 
-    // Schreibt OnNext und OnCompleted in EINE Liste, damit man die Reihenfolge prüfen kann.
-    private sealed class SequenceObserver : IObserver<int>
+    // Schreibt Update und StationStopped in EINE Liste, damit man die Reihenfolge prüfen kann.
+    private sealed class SequenceObserver : IWeatherObserver<int>
     {
         private readonly object _lock = new();
         private readonly List<string> _events = new();
+
+        public string Name => "Reihenfolge";
 
         public List<string> Events
         {
@@ -422,7 +424,7 @@ public class SubjectTests
             }
         }
 
-        public void OnNext(int value)
+        public void Update(int value)
         {
             lock (_lock)
             {
@@ -430,29 +432,12 @@ public class SubjectTests
             }
         }
 
-        public void OnError(Exception error)
-        {
-        }
-
-        public void OnCompleted()
+        public void StationStopped()
         {
             lock (_lock)
             {
-                _events.Add("completed");
+                _events.Add("stopped");
             }
-        }
-    }
-
-    private sealed class ThrowingObserver : IObserver<int>
-    {
-        public void OnNext(int value) => throw new InvalidOperationException();
-
-        public void OnError(Exception error)
-        {
-        }
-
-        public void OnCompleted()
-        {
         }
     }
 }

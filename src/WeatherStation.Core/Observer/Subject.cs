@@ -3,15 +3,20 @@ namespace WeatherStation.Core.Observer;
 // ============================================================
 // PATTERN: Observer – Rolle: Subject (das beobachtete Objekt)
 // Das Subject verwaltet die Liste seiner Observer und benachrichtigt sie.
-// Es kennt seine Observer nur über das Interface IObserver<T> (lose Kopplung).
+// Es kennt seine Observer nur über das Interface IWeatherObserver<T> (lose Kopplung).
+// Die Methoden heißen wie in Stufe 1: Subscribe, Unsubscribe, NotifyObservers.
 //
 // Einfache Fassung zum Einstieg: siehe src/WeatherStation.Beginner/Station.cs
 // (eine List, keine Threads, kein Lock). Diese Klasse hier ist die "Praxis-Version".
 //
+// So heißt das in .NET (nur als Ausblick): IObservable<T>/IObserver<T> mit
+// OnNext (= Update), OnCompleted (= StationStopped) und OnError.
+// Abmelden geht dort über ein IDisposable-Token statt über Unsubscribe.
+//
 // ------------------------------------------------------------
 // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
-// Alles zu Thread-Sicherheit: die zwei Sperren (_lock, _deliveryLock), Copy-on-Write,
-// Interlocked im Abmelde-Token und Replay unter der Sperre. Nötig, weil in der Web-App
+// Alles zu Thread-Sicherheit: die zwei Sperren (_lock, _deliveryLock), Copy-on-Write
+// und das Wiederholen des letzten Werts unter der Sperre. Nötig, weil in der Web-App
 // ein Hintergrunddienst meldet, während Browser-Seiten sich an- und abmelden.
 // ------------------------------------------------------------
 // Thread-Sicherheit (zwei Sperren mit klarer Aufgabe):
@@ -20,26 +25,28 @@ namespace WeatherStation.Core.Observer;
 //    sich ein Observer mitten in einer Benachrichtigung ab- oder anmelden.
 // 2. _deliveryLock sorgt dafür, dass immer nur EINE Meldung gleichzeitig verteilt
 //    wird. Dadurch kommen die Werte bei jedem Observer in der richtigen Reihenfolge an,
-//    der "Replay"-Wert kommt nie NACH einem neueren Wert, und nach OnCompleted
-//    kommt garantiert kein OnNext mehr.
+//    der letzte Wert für einen neuen Observer kommt nie NACH einem neueren Wert, und nach
+//    NotifyStopped kommt garantiert kein Update mehr.
 // ============================================================
-public abstract class Subject<T> : IObservable<T>
+public abstract class Subject<T>
 {
     private readonly object _lock = new();
     private readonly object _deliveryLock = new();
-    private readonly bool _replayLastValue;
+    private readonly bool _sendLastValueToNewObservers;
 
-    private IObserver<T>[] _observers = [];
-    private bool _isCompleted;
+    private IWeatherObserver<T>[] _observers = [];
+    private bool _isStopped;
     private bool _hasLastValue;
     private T? _lastValue;
 
-    protected Subject(bool replayLastValue = false)
+    // sendLastValueToNewObservers: Ein neuer Observer bekommt sofort den letzten Wert
+    // (sonst müsste er bis zur nächsten Messung warten).
+    protected Subject(bool sendLastValueToNewObservers = false)
     {
-        _replayLastValue = replayLastValue;
+        _sendLastValueToNewObservers = sendLastValueToNewObservers;
     }
 
-    // Wird ausgelöst, wenn ein Observer in OnNext eine Exception wirft.
+    // Wird ausgelöst, wenn ein Observer in Update oder StationStopped eine Exception wirft.
     // Die anderen Observer werden trotzdem benachrichtigt (Fehlerisolation).
     public event Action<ObserverError>? ObserverFailed;
 
@@ -54,88 +61,111 @@ public abstract class Subject<T> : IObservable<T>
         }
     }
 
-    public bool IsCompleted
+    public bool IsStopped
     {
         get
         {
             lock (_lock)
             {
-                return _isCompleted;
+                return _isStopped;
             }
         }
     }
 
     public IReadOnlyList<string> GetObserverNames()
     {
-        IObserver<T>[] snapshot;
+        IWeatherObserver<T>[] snapshot;
         lock (_lock)
         {
             snapshot = _observers;
         }
 
         var names = new List<string>();
-        foreach (IObserver<T> observer in snapshot)
+        foreach (IWeatherObserver<T> observer in snapshot)
         {
-            names.Add(GetName(observer));
+            names.Add(observer.Name);
         }
         return names;
     }
 
-    public IDisposable Subscribe(IObserver<T> observer)
+    public void Subscribe(IWeatherObserver<T> observer)
     {
         ArgumentNullException.ThrowIfNull(observer);
 
-        // Während der Anmeldung (inkl. Replay) darf keine andere Meldung verteilt werden,
+        // Während der Anmeldung (inkl. letztem Wert) darf keine andere Meldung verteilt werden,
         // sonst könnte der neue Observer erst den neuen und DANACH den alten Wert bekommen.
         lock (_deliveryLock)
         {
-            bool alreadyCompleted;
-            bool replay = false;
-            T? replayValue = default;
+            bool alreadyStopped;
+            bool sendLastValue = false;
+            T? lastValue = default;
 
             lock (_lock)
             {
-                alreadyCompleted = _isCompleted;
-                if (!alreadyCompleted)
+                alreadyStopped = _isStopped;
+                if (!alreadyStopped)
                 {
+                    if (Array.IndexOf(_observers, observer) >= 0)
+                    {
+                        return; // doppelt anmelden bringt nichts
+                    }
+
                     // Copy-on-Write: neues Array mit dem zusätzlichen Observer
-                    var newArray = new IObserver<T>[_observers.Length + 1];
+                    var newArray = new IWeatherObserver<T>[_observers.Length + 1];
                     Array.Copy(_observers, newArray, _observers.Length);
                     newArray[^1] = observer;
                     _observers = newArray;
 
-                    if (_replayLastValue && _hasLastValue)
+                    if (_sendLastValueToNewObservers && _hasLastValue)
                     {
-                        replay = true;
-                        replayValue = _lastValue;
+                        sendLastValue = true;
+                        lastValue = _lastValue;
                     }
                 }
             }
 
-            if (alreadyCompleted)
+            if (alreadyStopped)
             {
-                // Zu spät angemeldet: sofort "fertig" melden, es gibt nichts zu beobachten.
-                observer.OnCompleted();
-                return EmptySubscription.Instance;
+                // Zu spät angemeldet: sofort "beendet" melden, es gibt nichts zu beobachten.
+                observer.StationStopped();
+                return;
             }
 
-            if (replay)
+            if (sendLastValue)
             {
-                DeliverToOne(observer, replayValue!);
+                DeliverUpdate(observer, lastValue!);
             }
-
-            return new Subscription(this, observer);
         }
     }
 
-    protected void Notify(T value)
+    public void Unsubscribe(IWeatherObserver<T> observer)
+    {
+        ArgumentNullException.ThrowIfNull(observer);
+
+        lock (_lock)
+        {
+            int index = Array.IndexOf(_observers, observer);
+            if (index < 0)
+            {
+                return; // war gar nicht angemeldet
+            }
+
+            // Copy-on-Write: neues Array ohne den Observer
+            var newArray = new IWeatherObserver<T>[_observers.Length - 1];
+            Array.Copy(_observers, 0, newArray, 0, index);
+            Array.Copy(_observers, index + 1, newArray, index, _observers.Length - index - 1);
+            _observers = newArray;
+        }
+    }
+
+    protected void NotifyObservers(T value)
     {
         lock (_deliveryLock)
         {
-            IObserver<T>[] snapshot;
+            IWeatherObserver<T>[] snapshot;
             lock (_lock)
             {
-                if (_isCompleted)
+                if (_isStopped)
                 {
                     return;
                 }
@@ -145,152 +175,59 @@ public abstract class Subject<T> : IObservable<T>
             }
 
             // Außerhalb von _lock: Observer dürfen sich hier selbst ab- oder anmelden.
-            foreach (IObserver<T> observer in snapshot)
+            foreach (IWeatherObserver<T> observer in snapshot)
             {
-                // Hat ein Observer das Subject gerade beendet (z. B. Stop() in OnNext),
-                // bekommen die restlichen Observer kein OnNext mehr nach ihrem OnCompleted.
-                if (IsCompleted)
+                // Hat ein Observer die Station gerade beendet (z. B. Stop() in Update),
+                // bekommen die restlichen Observer kein Update mehr nach StationStopped.
+                if (IsStopped)
                 {
                     return;
                 }
-                DeliverToOne(observer, value);
+                DeliverUpdate(observer, value);
             }
         }
     }
 
-    protected void NotifyCompleted()
+    protected void NotifyStopped()
     {
         lock (_deliveryLock)
         {
-            IObserver<T>[]? snapshot = Complete();
-            if (snapshot == null)
+            IWeatherObserver<T>[] snapshot;
+            lock (_lock)
             {
-                return;
+                if (_isStopped)
+                {
+                    return;
+                }
+                _isStopped = true;
+                snapshot = _observers;
+                _observers = [];
             }
 
-            foreach (IObserver<T> observer in snapshot)
+            foreach (IWeatherObserver<T> observer in snapshot)
             {
                 try
                 {
-                    observer.OnCompleted();
+                    observer.StationStopped();
                 }
                 catch (Exception exception)
                 {
-                    ObserverFailed?.Invoke(new ObserverError(GetName(observer), exception));
+                    ObserverFailed?.Invoke(new ObserverError(observer.Name, exception));
                 }
             }
-        }
-    }
-
-    protected void NotifyError(Exception error)
-    {
-        ArgumentNullException.ThrowIfNull(error);
-
-        lock (_deliveryLock)
-        {
-            IObserver<T>[]? snapshot = Complete();
-            if (snapshot == null)
-            {
-                return;
-            }
-
-            foreach (IObserver<T> observer in snapshot)
-            {
-                try
-                {
-                    observer.OnError(error);
-                }
-                catch (Exception exception)
-                {
-                    ObserverFailed?.Invoke(new ObserverError(GetName(observer), exception));
-                }
-            }
-        }
-    }
-
-    // Markiert das Subject als beendet und leert die Liste.
-    // Gibt die bisherigen Observer zurück (null, wenn schon beendet).
-    private IObserver<T>[]? Complete()
-    {
-        lock (_lock)
-        {
-            if (_isCompleted)
-            {
-                return null;
-            }
-            _isCompleted = true;
-            IObserver<T>[] snapshot = _observers;
-            _observers = [];
-            return snapshot;
         }
     }
 
     // Ein fehlerhafter Observer darf die anderen nicht stören (Fehlerisolation).
-    private void DeliverToOne(IObserver<T> observer, T value)
+    private void DeliverUpdate(IWeatherObserver<T> observer, T value)
     {
         try
         {
-            observer.OnNext(value);
+            observer.Update(value);
         }
         catch (Exception exception)
         {
-            ObserverFailed?.Invoke(new ObserverError(GetName(observer), exception));
-        }
-    }
-
-    private static string GetName(IObserver<T> observer)
-    {
-        if (observer is INamedObserver named)
-        {
-            return named.Name;
-        }
-        return observer.GetType().Name;
-    }
-
-    private void Unsubscribe(IObserver<T> observer)
-    {
-        lock (_lock)
-        {
-            // Nur GENAU EINE Anmeldung entfernen (derselbe Observer kann mehrfach angemeldet sein).
-            int index = Array.IndexOf(_observers, observer);
-            if (index < 0)
-            {
-                return;
-            }
-
-            var newArray = new IObserver<T>[_observers.Length - 1];
-            Array.Copy(_observers, 0, newArray, 0, index);
-            Array.Copy(_observers, index + 1, newArray, index, _observers.Length - index - 1);
-            _observers = newArray;
-        }
-    }
-
-    // Das "Abmelde-Token": Wer Dispose() aufruft, wird nicht mehr benachrichtigt.
-    private sealed class Subscription : IDisposable
-    {
-        private Subject<T>? _subject;
-        private readonly IObserver<T> _observer;
-
-        public Subscription(Subject<T> subject, IObserver<T> observer)
-        {
-            _subject = subject;
-            _observer = observer;
-        }
-
-        public void Dispose()
-        {
-            // Interlocked: auch bei parallelem Mehrfach-Dispose wird nur einmal abgemeldet.
-            Subject<T>? subject = Interlocked.Exchange(ref _subject, null);
-            subject?.Unsubscribe(_observer);
-        }
-    }
-
-    private sealed class EmptySubscription : IDisposable
-    {
-        public static readonly EmptySubscription Instance = new();
-
-        public void Dispose()
-        {
+            ObserverFailed?.Invoke(new ObserverError(observer.Name, exception));
         }
     }
 }

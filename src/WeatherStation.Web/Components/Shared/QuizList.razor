@@ -1,0 +1,20 @@
+@* Quiz: Frage als Kopfzeile, Antwort bleibt zugeklappt, bis man klickt.
+   Type=Multiple: Mehrere Antworten dürfen gleichzeitig offen sein. *@
+<Accordion Type="Accordion.AccordionType.Multiple" Class="w-full">
+    @for (int i = 0; i < Questions.Count; i++)
+    {
+        QuizQuestion question = Questions[i];
+        <AccordionItem Value="@("q" + i)">
+            <AccordionTrigger>
+                <span class="text-left text-sm"><span class="mr-2 tabular-nums text-muted-foreground">@(i + 1).</span><PatternText Text="@question.Question" /></span>
+            </AccordionTrigger>
+            <AccordionContent>
+                <p class="text-sm text-muted-foreground"><PatternText Text="@question.Answer" /></p>
+            </AccordionContent>
+        </AccordionItem>
+    }
+</Accordion>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<QuizQuestion> Questions { get; set; } = [];
+}

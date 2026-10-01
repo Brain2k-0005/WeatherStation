@@ -148,18 +148,22 @@ public sealed class WeatherConsole
 
         // ============================================================
         // PATTERN: Observer – hier werden die Observer angemeldet
-        // Subscribe gibt ein IDisposable zurück: Dispose() = abmelden.
+        // Subscribe = anmelden, Unsubscribe = abmelden (wie in Stufe 1).
         // ============================================================
         var readingPrinter = new ReadingPrinter();
-        IDisposable? readingSubscription = system.Station.Subscribe(readingPrinter);
+        system.Station.Subscribe(readingPrinter);
 
         var warningPrinter = new WarningPrinter();
-        IDisposable warningSubscription = system.Warnings.Subscribe(warningPrinter);
+        system.Warnings.Subscribe(warningPrinter);
 
         // Lambda-Observer mit Filter: nur Warnungen der Stufe "Gefahr" kommen an.
-        IDisposable dangerSubscription = system.Warnings
-            .Where(warning => warning.Level == WarningLevel.Danger)
-            .Subscribe("Gefahren-Banner", PrintDangerBanner);
+        // ActionObserver = Observer aus einer Lambda, FilterObserver = Hülle, die nur passende Werte durchlässt.
+        var dangerBanner = new FilterObserver<WeatherWarning>(
+            new ActionObserver<WeatherWarning>("Gefahren-Banner", PrintDangerBanner),
+            warning => warning.Level == WarningLevel.Danger);
+        system.Warnings.Subscribe(dangerBanner);
+
+        bool readingPrinterSubscribed = true;
 
         bool keyboardAvailable = IsKeyboardAvailable();
         PrintSimulationStart(scenario, keyboardAvailable);
@@ -192,7 +196,7 @@ public sealed class WeatherConsole
                         }
                         else if (key == ConsoleKey.U)
                         {
-                            readingSubscription = ToggleReadingPrinter(system, readingPrinter, readingSubscription);
+                            readingPrinterSubscribed = ToggleReadingPrinter(system, readingPrinter, readingPrinterSubscribed);
                         }
                     }
                 }
@@ -204,7 +208,7 @@ public sealed class WeatherConsole
                 if (!paused)
                 {
                     WeatherReading reading = sensor.ReadNext();
-                    system.Station.Report(reading); // verteilt an alle angemeldeten Observer
+                    system.Station.SetReading(reading); // verteilt an alle angemeldeten Observer
                     step++;
                     Thread.Sleep(keyboardAvailable ? StepDelayMilliseconds : 0);
                 }
@@ -216,14 +220,9 @@ public sealed class WeatherConsole
         }
         finally
         {
-            // Station stoppen: alle Observer bekommen OnCompleted und melden sich ab.
+            // Station stoppen: alle Observer bekommen StationStopped (die Station leert dabei ihre Observer-Liste).
             Console.WriteLine();
             system.Station.Stop();
-
-            // Zur Sicherheit alle Anmeldungen freigeben (Dispose ist mehrfach aufrufbar).
-            readingSubscription?.Dispose();
-            warningSubscription.Dispose();
-            dangerSubscription.Dispose();
         }
 
         if (keyboardAvailable)
@@ -257,19 +256,20 @@ public sealed class WeatherConsole
         Console.ResetColor();
     }
 
-    // Demonstriert IDisposable: Abmelden = Dispose(), Anmelden = neues Subscribe.
-    private static IDisposable? ToggleReadingPrinter(WeatherSystem system, ReadingPrinter printer, IDisposable? subscription)
+    // Demonstriert Unsubscribe/Subscribe. Gibt zurück, ob der Printer danach angemeldet ist.
+    private static bool ToggleReadingPrinter(WeatherSystem system, ReadingPrinter printer, bool isSubscribed)
     {
-        if (subscription != null)
+        if (isSubscribed)
         {
-            subscription.Dispose();
-            PrintInfo("-- Messwert-Anzeige abgemeldet (Dispose) --");
-            return null;
+            system.Station.Unsubscribe(printer);
+            PrintInfo("-- Messwert-Anzeige abgemeldet (Unsubscribe) --");
+            return false;
         }
 
-        // Die Station hat "replayLastValue": Nach dem Subscribe kommt sofort der letzte Messwert noch einmal.
+        // Die Station schickt neuen Observern sofort den letzten Messwert: Nach dem Subscribe kommt er noch einmal.
         PrintInfo("-- Messwert-Anzeige wieder angemeldet (Subscribe, zeigt sofort den letzten Messwert) --");
-        return system.Station.Subscribe(printer);
+        system.Station.Subscribe(printer);
+        return true;
     }
 
     // Wird vom Lambda-Observer aufgerufen (nur bei Stufe "Gefahr").

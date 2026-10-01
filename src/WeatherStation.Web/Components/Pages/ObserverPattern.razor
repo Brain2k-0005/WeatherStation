@@ -1,0 +1,140 @@
+@page "/muster/observer"
+@implements IDisposable
+@inject WeatherSystem Weather
+
+<PageTitle>Observer - Design Patterns - Wetterstation</PageTitle>
+
+@* Lernseite zum Observer-Muster. Text und Code kommen aus Services/PatternContent.cs,
+   hier stehen nur das Diagramm und die Live-Karte (mit echter Anmeldung an der Station). *@
+<PatternDetail Slug="observer">
+    <Diagram>
+        <div class="flex flex-col gap-2 md:flex-row md:items-start">
+            <DiagramBox Title="Station" Sub="Subject von WeatherReading" Highlight="true" />
+            <div class="flex items-center self-center"><DiagramArrow Label="Messwert" /></div>
+            <div class="flex flex-col gap-2">
+                <DiagramBox Title="Warn-Dienst" Sub="Observer UND Subject" Highlight="true" />
+                <DiagramBox Title="Messwert-Verlauf" Sub="Observer (ReadingHistory)" />
+                <DiagramBox Title="Statistik" Sub="Observer (WeatherStatistics)" />
+            </div>
+            <div class="flex items-center self-start pt-2"><DiagramArrow Label="Warnung" /></div>
+            <div class="flex flex-col gap-2">
+                <DiagramBox Title="Warn-Historie" Sub="Observer (WarningHistory)" />
+                <DiagramBox Title="FilterObserver" Sub="nur Warnung und Gefahr, dann Toast" />
+            </div>
+        </div>
+    </Diagram>
+
+    <Live>
+        <PatternCard Title="Live: Wer hört gerade zu?"
+                     Description="Diese Zahlen kommen direkt aus der laufenden Station. Die Liste ändert sich, wenn Seiten geöffnet oder verlassen werden.">
+            <Descriptions Column="2">
+                <DescriptionsItem Label="Observer an der Station"><span class="tabular-nums">@_stationObservers.Count</span></DescriptionsItem>
+                <DescriptionsItem Label="Observer am Warn-Dienst"><span class="tabular-nums">@_warningObservers.Count</span></DescriptionsItem>
+                <DescriptionsItem Label="Messwerte bisher"><span class="tabular-nums">@_readingCount</span></DescriptionsItem>
+                <DescriptionsItem Label="Letzte Temperatur"><span class="tabular-nums">@_lastTemperature</span></DescriptionsItem>
+            </Descriptions>
+
+            <div class="grid gap-4 lg:grid-cols-2">
+                <div>
+                    <div class="mb-1 font-medium">Observer der Station</div>
+                    <ul class="divide-y divide-border rounded-md border border-border">
+                        @foreach (string name in _stationObservers)
+                        {
+                            <li class="flex items-center gap-2 px-3 py-1.5">
+                                <SvgGlyph Svg="@(Lucide.Eye)" Class="size-4 shrink-0 text-muted-foreground" />
+                                <span class="min-w-0 truncate">@name</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+                <div>
+                    <div class="mb-1 font-medium">Observer des Warn-Dienstes</div>
+                    <ul class="divide-y divide-border rounded-md border border-border">
+                        @foreach (string name in _warningObservers)
+                        {
+                            <li class="flex items-center gap-2 px-3 py-1.5">
+                                <SvgGlyph Svg="@(Lucide.Eye)" Class="size-4 shrink-0 text-muted-foreground" />
+                                <span class="min-w-0 truncate">@name</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+
+            <p class="text-muted-foreground">
+                Findest du <code>Observer-Lernseite (Anzeige)</code> in der Liste der Station? Das ist diese Seite selbst:
+                Sie hat sich beim Öffnen angemeldet und meldet sich beim Verlassen wieder ab.
+                Verlässt du die Seite, verschwindet der Eintrag.
+            </p>
+
+            <div>
+                <Button Variant="Button.ButtonVariant.Default" Size="Button.ButtonSize.Sm" Href="/observer-labor">
+                    <SvgGlyph Svg="@(Lucide.FlaskConical)" Class="h-3.5 w-3.5" />
+                    Probier es aus: Observer-Labor
+                </Button>
+            </div>
+        </PatternCard>
+
+        @* Den Code dieser Anmeldung zeigt die Lernseite selbst (Beispiel "Blazor-Seite"). *@
+        <PatternCard Title="So meldet sich eine Blazor-Seite an und ab"
+                     Description="Genau das passiert in dieser Seite. Das Feld `_observer` ist wichtig: `Unsubscribe` braucht dasselbe Objekt.">
+            <PatternCode Code="@PatternSnippets.ObserverBlazor" />
+        </PatternCard>
+    </Live>
+</PatternDetail>
+
+@code {
+    // Wir merken uns den Observer in einem Feld, sonst könnten wir ihn nicht mehr abmelden
+    // (Unsubscribe braucht dasselbe Objekt).
+    private IWeatherObserver<WeatherReading>? _observer;
+    private bool _disposed;
+
+    private IReadOnlyList<string> _stationObservers = [];
+    private IReadOnlyList<string> _warningObservers = [];
+    private int _readingCount;
+    private string _lastTemperature = Display.Empty;
+
+    protected override void OnInitialized()
+    {
+        ReadLiveData();
+
+        // PATTERN: Observer - diese Seite ist selbst ein Beobachter der Station.
+        // Bei jedem Messwert liest sie die Zahlen neu ein und zeichnet sich neu.
+        _observer = new ActionObserver<WeatherReading>("Observer-Lernseite (Anzeige)", reading => Refresh());
+        Weather.Station.Subscribe(_observer);
+    }
+
+    private void ReadLiveData()
+    {
+        _stationObservers = Weather.Station.GetObserverNames();
+        _warningObservers = Weather.Warnings.GetObserverNames();
+        _readingCount = Weather.Station.ReadingCount;
+        _lastTemperature = Display.Temperature(Weather.Station.LastReading?.Temperature);
+    }
+
+    // ------------------------------------------------------------
+    // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
+    // Blazor-spezifisch: Meldungen kommen aus dem Hintergrund-Thread. InvokeAsync wechselt
+    // in den UI-Kontext, das _disposed-Flag fängt Meldungen ab, die noch "unterwegs" sind.
+    // ------------------------------------------------------------
+    private void Refresh()
+    {
+        InvokeAsync(() =>
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            ReadLiveData();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        // Abmelden, sonst hält die Station (lebt für die ganze Laufzeit) diese Seite für immer im Speicher.
+        _disposed = true;
+        Weather.Station.Unsubscribe(_observer!);
+    }
+}

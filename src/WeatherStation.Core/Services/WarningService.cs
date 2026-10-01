@@ -6,12 +6,12 @@ namespace WeatherStation.Core.Services;
 
 // ============================================================
 // PATTERN: Observer – ist GLEICHZEITIG Observer und Subject
-// Als Observer bekommt der Warn-Dienst Messwerte von der Station (OnNext).
+// Als Observer bekommt der Warn-Dienst Messwerte von der Station (Update).
 // Als Subject (Basisklasse Subject<WeatherWarning>) meldet er die erzeugten
 // Warnungen an seine eigenen Observer weiter (Historie, Anzeige, ...).
 // So entsteht eine Kette: Station -> WarningService -> Anzeige.
 // ============================================================
-public sealed class WarningService : Subject<WeatherWarning>, IObserver<WeatherReading>, INamedObserver
+public sealed class WarningService : Subject<WeatherWarning>, IWeatherObserver<WeatherReading>
 {
     // ------------------------------------------------------------
     // FÜR FORTGESCHRITTENE – beim ersten Lesen überspringen.
@@ -41,7 +41,7 @@ public sealed class WarningService : Subject<WeatherWarning>, IObserver<WeatherR
         }
     }
 
-    public void OnNext(WeatherReading reading)
+    public void Update(WeatherReading reading)
     {
         // Regeln haben einen eigenen Zustand (z. B. "Warnung aktiv") und sind nicht thread-sicher.
         // Deshalb prüfen wir unter einem lock, melden aber außerhalb davon.
@@ -56,11 +56,10 @@ public sealed class WarningService : Subject<WeatherWarning>, IObserver<WeatherR
 
         foreach (WeatherWarning warning in warnings)
         {
-            Notify(warning);
+            NotifyObservers(warning);
         }
     }
 
-    public void OnError(Exception error) => NotifyError(error);
-
-    public void OnCompleted() => NotifyCompleted();
+    // Die Station ist fertig -> auch der Warn-Dienst meldet seinen Observern "beendet".
+    public void StationStopped() => NotifyStopped();
 }

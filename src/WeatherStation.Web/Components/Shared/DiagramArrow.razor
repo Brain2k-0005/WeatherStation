@@ -1,0 +1,14 @@
+@* Pfeil zwischen zwei Kästen: nach rechts auf breiten, nach unten auf schmalen Bildschirmen.
+   Optional mit Beschriftung. aria-hidden, weil der Pfeil nur Dekoration ist. *@
+<div class="flex shrink-0 items-center justify-center gap-1 text-muted-foreground" aria-hidden="true">
+    <SvgGlyph Svg="@(Lucide.ArrowDown)" Class="size-4 md:hidden" />
+    <SvgGlyph Svg="@(Lucide.ArrowRight)" Class="hidden size-4 md:block" />
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <span class="text-xs">@Label</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+}

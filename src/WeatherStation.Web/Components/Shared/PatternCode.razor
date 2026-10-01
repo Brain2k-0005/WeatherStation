@@ -1,0 +1,16 @@
+@* Code-Block der Lernseiten: Geist Mono (Regel für pre in css/app.css), Hintergrund --muted,
+   kein Syntax-Highlighter. Lange Zeilen scrollen waagerecht; tabindex="0" macht den Block
+   per Tastatur scrollbar. *@
+<div class="min-w-0">
+    @if (!string.IsNullOrEmpty(Caption))
+    {
+        <div class="mb-1 text-xs font-medium text-muted-foreground">@Caption</div>
+    }
+    <pre tabindex="0" class="overflow-x-auto rounded-md bg-muted p-3 text-xs leading-relaxed text-foreground"><code>@Code</code></pre>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Code { get; set; } = "";
+
+    [Parameter] public string? Caption { get; set; }
+}

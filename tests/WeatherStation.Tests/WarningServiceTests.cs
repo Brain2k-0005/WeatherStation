@@ -8,25 +8,25 @@ namespace WeatherStation.Tests;
 public class WarningServiceTests
 {
     [Fact]
-    public void OnNext_ChecksAllRulesAndNotifiesEveryWarning()
+    public void Update_ChecksAllRulesAndNotifiesEveryWarning()
     {
         var service = new WarningService([new FrostRule(0, 1), new StormRule(75, 60)]);
         var observer = new RecordingObserver<WeatherWarning>();
         service.Subscribe(observer);
 
-        service.OnNext(TestData.Reading(temperature: -2, windSpeed: 90));
+        service.Update(TestData.Reading(temperature: -2, windSpeed: 90));
 
         Assert.Equal([WarningType.Frost, WarningType.Storm], observer.Values.Select(w => w.Type).ToList());
     }
 
     [Fact]
-    public void OnNext_NoRuleTriggers_NotifiesNothing()
+    public void Update_NoRuleTriggers_NotifiesNothing()
     {
         var service = new WarningService([new FrostRule(0, 1)]);
         var observer = new RecordingObserver<WeatherWarning>();
         service.Subscribe(observer);
 
-        service.OnNext(TestData.Reading(temperature: 15));
+        service.Update(TestData.Reading(temperature: 15));
 
         Assert.Empty(observer.Values);
     }
@@ -36,7 +36,7 @@ public class WarningServiceTests
     {
         var service = new WarningService([]);
 
-        service.OnNext(TestData.Reading());
+        service.Update(TestData.Reading());
 
         Assert.Empty(service.RuleNames);
     }
@@ -59,39 +59,26 @@ public class WarningServiceTests
         station.Subscribe(service);
         service.Subscribe(observer);
 
-        station.Report(TestData.Reading(temperature: -3));
+        station.SetReading(TestData.Reading(temperature: -3));
 
         Assert.Single(observer.Values);
     }
 
     [Fact]
-    public void OnCompleted_CompletesServiceObservers()
+    public void StationStopped_StopsServiceObservers()
     {
         var service = new WarningService([]);
         var observer = new RecordingObserver<WeatherWarning>();
         service.Subscribe(observer);
 
-        service.OnCompleted();
+        service.StationStopped();
 
-        Assert.Equal(1, observer.CompletedCount);
-        Assert.True(service.IsCompleted);
+        Assert.Equal(1, observer.StoppedCount);
+        Assert.True(service.IsStopped);
     }
 
     [Fact]
-    public void OnError_ForwardsErrorToServiceObservers()
-    {
-        var service = new WarningService([]);
-        var observer = new RecordingObserver<WeatherWarning>();
-        service.Subscribe(observer);
-        var error = new Exception("x");
-
-        service.OnError(error);
-
-        Assert.Same(error, Assert.Single(observer.Errors));
-    }
-
-    [Fact]
-    public void StationStop_CompletesWholeChain()
+    public void StationStop_StopsWholeChain()
     {
         var station = new Station("Test");
         var service = new WarningService([]);
@@ -101,18 +88,18 @@ public class WarningServiceTests
 
         station.Stop();
 
-        Assert.Equal(1, observer.CompletedCount);
+        Assert.Equal(1, observer.StoppedCount);
     }
 
     [Fact]
-    public void OnNext_AfterCompleted_NoWarningsDelivered()
+    public void Update_AfterStationStopped_NoWarningsDelivered()
     {
         var service = new WarningService([new FrostRule(0, 1)]);
         var observer = new RecordingObserver<WeatherWarning>();
         service.Subscribe(observer);
-        service.OnCompleted();
+        service.StationStopped();
 
-        service.OnNext(TestData.Reading(temperature: -5));
+        service.Update(TestData.Reading(temperature: -5));
 
         Assert.Empty(observer.Values);
     }
@@ -124,11 +111,11 @@ public class WarningServiceTests
     }
 
     [Fact]
-    public void OnNext_ConcurrentCalls_DoNotThrow()
+    public void Update_ConcurrentCalls_DoNotThrow()
     {
         var service = new WarningService([new TemperatureChangeRule(3), new PressureDropRule(3, TimeSpan.FromHours(3))]);
 
         Parallel.For(0, 500, index =>
-            service.OnNext(TestData.Reading(temperature: index % 20, minutes: index)));
+            service.Update(TestData.Reading(temperature: index % 20, minutes: index)));
     }
 }

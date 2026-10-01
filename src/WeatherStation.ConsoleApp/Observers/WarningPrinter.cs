@@ -1,4 +1,5 @@
 using WeatherStation.Core.Models;
+using WeatherStation.Core.Observer;
 
 namespace WeatherStation.ConsoleApp.Observers;
 
@@ -7,9 +8,11 @@ namespace WeatherStation.ConsoleApp.Observers;
 // Hört auf den WarningService (dieser ist selbst ein Subject).
 // Die Farbe hängt von der Warnstufe ab.
 // ============================================================
-public sealed class WarningPrinter : IObserver<WeatherWarning>
+public sealed class WarningPrinter : IWeatherObserver<WeatherWarning>
 {
-    public void OnNext(WeatherWarning warning)
+    public string Name => "Warn-Anzeige";
+
+    public void Update(WeatherWarning warning)
     {
         Console.ForegroundColor = ColorFor(warning.Level);
         Console.WriteLine($"  >> {warning.Level.ToGerman().ToUpperInvariant()}: {warning.Title} – {warning.Message}");
@@ -21,17 +24,10 @@ public sealed class WarningPrinter : IObserver<WeatherWarning>
         }
     }
 
-    public void OnError(Exception error)
-    {
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine($"  [Warn-Anzeige] Fehler: {error.Message}");
-        Console.ResetColor();
-    }
-
-    public void OnCompleted()
+    public void StationStopped()
     {
         Console.ForegroundColor = ConsoleColor.DarkGray;
-        Console.WriteLine("  [Warn-Anzeige] Warn-Dienst beendet (OnCompleted).");
+        Console.WriteLine("  [Warn-Anzeige] Warn-Dienst beendet (StationStopped).");
         Console.ResetColor();
     }
 

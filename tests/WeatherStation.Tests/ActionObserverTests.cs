@@ -5,39 +5,34 @@ namespace WeatherStation.Tests;
 public class ActionObserverTests
 {
     [Fact]
-    public void OnNext_CallsAction()
+    public void Update_CallsAction()
     {
         int received = 0;
         var observer = new ActionObserver<int>("Test", value => received = value);
 
-        observer.OnNext(42);
+        observer.Update(42);
 
         Assert.Equal(42, received);
         Assert.Equal("Test", observer.Name);
     }
 
     [Fact]
-    public void OnErrorAndOnCompleted_CallOptionalActions()
+    public void StationStopped_CallsOptionalAction()
     {
-        Exception? receivedError = null;
-        bool completed = false;
-        var observer = new ActionObserver<int>("Test", _ => { }, error => receivedError = error, () => completed = true);
-        var error = new Exception("x");
+        bool stopped = false;
+        var observer = new ActionObserver<int>("Test", _ => { }, () => stopped = true);
 
-        observer.OnError(error);
-        observer.OnCompleted();
+        observer.StationStopped();
 
-        Assert.Same(error, receivedError);
-        Assert.True(completed);
+        Assert.True(stopped);
     }
 
     [Fact]
-    public void OnErrorAndOnCompleted_WithoutActions_DoNothing()
+    public void StationStopped_WithoutAction_DoesNothing()
     {
         var observer = new ActionObserver<int>("Test", _ => { });
 
-        observer.OnError(new Exception());
-        observer.OnCompleted();
+        observer.StationStopped();
     }
 
     [Fact]
@@ -48,12 +43,12 @@ public class ActionObserverTests
     }
 
     [Fact]
-    public void SubscribeExtension_UsesNameAndReceivesValues()
+    public void SubscribedActionObserver_ReceivesValuesAndShowsItsName()
     {
         var subject = new TestSubject<int>();
         var received = new List<int>();
 
-        subject.Subscribe("Bildschirm", received.Add);
+        subject.Subscribe(new ActionObserver<int>("Bildschirm", received.Add));
         subject.Publish(3);
 
         Assert.Equal([3], received);

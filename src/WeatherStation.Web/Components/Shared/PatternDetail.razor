@@ -1,0 +1,194 @@
+@* Gemeinsames Gerüst aller Pattern-Lernseiten (/muster/observer, /builder, ...).
+   Alle Texte kommen aus Services/PatternContent.cs, alle Code-Beispiele aus
+   Services/PatternSnippets.cs. Die einzelne Seite liefert nur das, was sich unterscheidet:
+   das Ablaufdiagramm (Diagram) und die Live-Karten (Live).
+   Diese Komponente abonniert nichts; Live-Daten holt sich die jeweilige Seite. *@
+@if (_info is null)
+{
+    <GridEmpty Icon="@Lucide.SearchX" Title="Unbekanntes Pattern" Description="@("Zu '" + Slug + "' gibt es keine Lernseite.")" />
+    return;
+}
+
+<div class="flex flex-col gap-4">
+
+    @* --- Zurück-Zeile (Design Guide "Detailansichten"): links zurück, rechts der Verweis ins Repo --- *@
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <a href="/muster" class="inline-flex items-center gap-1.5 text-sm font-medium text-primary no-underline hover:underline">
+            <SvgGlyph Svg="@(Lucide.ArrowLeft)" Class="size-4" />
+            Alle Patterns
+        </a>
+        <span class="text-sm text-muted-foreground">Ausführlich im Repo: <code>@_info.DocFile</code></span>
+    </div>
+
+    @* --- In einem Satz + Alltagsvergleich --- *@
+    <PatternCard Title="In einem Satz" Description="@_info.Sentence">
+        <p class="text-muted-foreground"><PatternText Text="@_info.AnalogyText" /></p>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-border text-muted-foreground">
+                        <th class="py-1.5 pr-4 font-medium">Alltag</th>
+                        <th class="py-1.5 font-medium">In diesem Projekt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (AnalogyRow row in _info.Analogy)
+                    {
+                        <tr class="border-b border-border last:border-b-0 align-top">
+                            <td class="py-1.5 pr-4"><PatternText Text="@row.Everyday" /></td>
+                            <td class="py-1.5"><PatternText Text="@row.Project" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </PatternCard>
+
+    @* --- Diagramm (von der Seite geliefert) --- *@
+    @if (Diagram is not null)
+    {
+        <PatternCard Title="Das Bild dazu" Description="@_info.DiagramCaption">
+            @Diagram
+        </PatternCard>
+    }
+
+    @* --- Ohne / Mit Pattern nebeneinander (untereinander auf schmalen Bildschirmen) --- *@
+    <div class="grid gap-4 lg:grid-cols-2">
+        <PatternCard Title="Ohne Pattern" Description="@_info.WithoutIntro">
+            <PatternCode Code="@_info.WithoutCode.Code" />
+            <div class="font-medium">Die Probleme</div>
+            <ul class="list-disc space-y-1 pl-5 text-muted-foreground">
+                @foreach (string problem in _info.Problems)
+                {
+                    <li><PatternText Text="@problem" /></li>
+                }
+            </ul>
+        </PatternCard>
+
+        <PatternCard Title="Mit Pattern" Description="@_info.WithIntro">
+            @foreach (CodeExample example in _info.WithCode)
+            {
+                <PatternCode Code="@example.Code" Caption="@example.Caption" />
+            }
+        </PatternCard>
+    </div>
+
+    @* --- Schritt für Schritt --- *@
+    <PatternCard Title="Schritt für Schritt" Description="@_info.StepsIntro">
+        <ol class="flex flex-col gap-2">
+            @for (int i = 0; i < _info.Steps.Count; i++)
+            {
+                <li class="flex gap-3">
+                    <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium tabular-nums">@(i + 1)</span>
+                    <span class="pt-0.5 text-muted-foreground"><PatternText Text="@_info.Steps[i]" /></span>
+                </li>
+            }
+        </ol>
+    </PatternCard>
+
+    @* --- Live-Karten der jeweiligen Seite --- *@
+    @Live
+
+    @* --- Rollen-Tabelle --- *@
+    <PatternCard Title="Die Rollen im Projekt" Description="Welche Klasse spielt welche Rolle, und in welcher Datei steht sie? Pfade gelten unter src/WeatherStation.">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-border text-muted-foreground">
+                        <th class="py-1.5 pr-4 font-medium">Rolle</th>
+                        <th class="py-1.5 pr-4 font-medium">Klasse</th>
+                        <th class="py-1.5 font-medium">Datei</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (PatternRole role in _info.Roles)
+                    {
+                        <tr class="border-b border-border last:border-b-0 align-top">
+                            <td class="py-1.5 pr-4 font-medium">@role.Role</td>
+                            <td class="py-1.5 pr-4"><PatternText Text="@role.Class" /></td>
+                            <td class="py-1.5 text-muted-foreground"><code>@role.File</code></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </PatternCard>
+
+    @* --- Vorteile / Nachteile --- *@
+    <div class="grid gap-4 lg:grid-cols-2">
+        <PatternCard Title="Vorteile">
+            <ul class="flex flex-col gap-2">
+                @foreach (string pro in _info.Pros)
+                {
+                    <li class="flex gap-2">
+                        <SvgGlyph Svg="@(Lucide.Check)" Class="mt-0.5 size-4 shrink-0 text-primary" />
+                        <span class="text-muted-foreground"><PatternText Text="@pro" /></span>
+                    </li>
+                }
+            </ul>
+        </PatternCard>
+        <PatternCard Title="Nachteile">
+            <ul class="flex flex-col gap-2">
+                @foreach (string con in _info.Cons)
+                {
+                    <li class="flex gap-2">
+                        <SvgGlyph Svg="@(Lucide.Minus)" Class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        <span class="text-muted-foreground"><PatternText Text="@con" /></span>
+                    </li>
+                }
+            </ul>
+        </PatternCard>
+    </div>
+
+    @* --- Typische Fehler --- *@
+    <PatternCard Title="Typische Fehler">
+        <ul class="flex flex-col gap-2">
+            @foreach (string mistake in _info.Mistakes)
+            {
+                <li class="flex gap-2">
+                    <SvgGlyph Svg="@(Lucide.TriangleAlert)" Class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <span class="text-muted-foreground"><PatternText Text="@mistake" /></span>
+                </li>
+            }
+        </ul>
+    </PatternCard>
+
+    @* --- Quiz --- *@
+    <PatternCard Title="Teste dich selbst" Description="Überlege zuerst selbst. Die Antwort erscheint erst, wenn du auf die Frage klickst.">
+        <QuizList Questions="@_info.Quiz" />
+    </PatternCard>
+
+    @* --- Weiter im Lernpfad --- *@
+    <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <span class="text-muted-foreground">
+            Weiter im Lernpfad: @(_next is null ? "Code-Rundgang (docs/CODE-RUNDGANG.md im Repo)" : _next.Title)
+        </span>
+        @if (_next is not null)
+        {
+            <Button Variant="Button.ButtonVariant.Outline" Size="Button.ButtonSize.Sm" Href="@_next.Href">
+                @_next.Title
+                <SvgGlyph Svg="@(Lucide.ArrowRight)" Class="h-3.5 w-3.5" />
+            </Button>
+        }
+    </div>
+</div>
+
+@code {
+    private PatternInfo? _info;
+    private PatternInfo? _next;
+
+    // Welches Pattern gezeigt wird, steht im Parameter (kommt von der Seite, z. B. "observer").
+    [Parameter, EditorRequired] public string Slug { get; set; } = "";
+
+    // Ablaufdiagramm der Seite (Kästen und Pfeile aus DiagramBox / DiagramArrow).
+    [Parameter] public RenderFragment? Diagram { get; set; }
+
+    // Zusätzliche Karten mit Live-Daten der Seite.
+    [Parameter] public RenderFragment? Live { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _info = PatternCatalog.Find(Slug);
+        _next = _info is null ? null : PatternCatalog.Next(_info);
+    }
+}

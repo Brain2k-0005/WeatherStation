@@ -126,8 +126,8 @@
 </div>
 
 @code {
-    private IDisposable? _readingSubscription;
-    private IDisposable? _warningSubscription;
+    private IWeatherObserver<WeatherReading>? _readingObserver;
+    private IWeatherObserver<WeatherWarning>? _warningObserver;
     private bool _disposed;
 
     // Anzeige-Daten. Sie werden bei jeder Meldung neu aus den Verläufen gelesen.
@@ -154,10 +154,14 @@
         // Die Seite meldet sich an der Station (Messwerte) und am Warn-Dienst
         // (Warnungen) an. Ab jetzt ruft die Station bei JEDEM neuen Messwert
         // unsere Methode auf. Wir müssen nicht ständig nachfragen (kein Polling).
-        // Die Station hat replayLastValue: Wir bekommen sofort den letzten Wert.
+        // Die Station schickt neuen Observern sofort den letzten Wert.
+        // Die Referenzen in den Feldern MÜSSEN wir behalten: Nur mit denselben Objekten
+        // können wir uns in Dispose wieder abmelden (Unsubscribe).
         // ============================================================
-        _readingSubscription = Weather.Station.Subscribe("Übersicht (Messwerte)", reading => Refresh());
-        _warningSubscription = Weather.Warnings.Subscribe("Übersicht (Warnungen)", warning => Refresh());
+        _readingObserver = new ActionObserver<WeatherReading>("Übersicht (Messwerte)", reading => Refresh());
+        _warningObserver = new ActionObserver<WeatherWarning>("Übersicht (Warnungen)", warning => Refresh());
+        Weather.Station.Subscribe(_readingObserver);
+        Weather.Warnings.Subscribe(_warningObserver);
 
         // Klassisches .NET-Event: auch hier gilt "in Dispose wieder abmelden".
         Runner.StateChanged += OnRunnerStateChanged;
@@ -242,11 +246,11 @@
     public void Dispose()
     {
         // Abmelden ist Pflicht: Die Station lebt so lange wie die App, diese Seite nur
-        // so lange, wie der Nutzer sie offen hat. Ohne Dispose blieben tote Seiten
+        // so lange, wie der Nutzer sie offen hat. Ohne Unsubscribe blieben tote Seiten
         // angemeldet (Speicherleck) und bekämen weiter Meldungen.
         _disposed = true;
-        _readingSubscription?.Dispose();
-        _warningSubscription?.Dispose();
+        Weather.Station.Unsubscribe(_readingObserver!);
+        Weather.Warnings.Unsubscribe(_warningObserver!);
         Runner.StateChanged -= OnRunnerStateChanged;
     }
 }

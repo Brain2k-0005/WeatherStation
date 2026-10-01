@@ -6,8 +6,8 @@ namespace WeatherStation.Core.Services;
 // ============================================================
 // PATTERN: Observer – Rolle: Subject
 // Die Wetterstation meldet Messwerte. Sie weiß nicht, wer zuhört
-// (Bildschirm, Warn-Dienst, Statistik ...) – sie ruft nur Notify().
-// replayLastValue: Wer sich später anmeldet, bekommt sofort den letzten Messwert
+// (Bildschirm, Warn-Dienst, Statistik ...) – sie ruft nur NotifyObservers().
+// sendLastValueToNewObservers: Wer sich später anmeldet, bekommt sofort den letzten Messwert
 // und muss nicht auf die nächste Messung warten.
 // ============================================================
 public sealed class Station : Subject<WeatherReading>
@@ -20,7 +20,7 @@ public sealed class Station : Subject<WeatherReading>
     private WeatherReading? _lastReading;
     private int _readingCount;
 
-    public Station(string name) : base(replayLastValue: true)
+    public Station(string name) : base(sendLastValueToNewObservers: true)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -53,11 +53,11 @@ public sealed class Station : Subject<WeatherReading>
         }
     }
 
-    public void Report(WeatherReading reading)
+    public void SetReading(WeatherReading reading)
     {
         ArgumentNullException.ThrowIfNull(reading);
 
-        if (IsCompleted)
+        if (IsStopped)
         {
             throw new InvalidOperationException("Die Station wurde gestoppt und nimmt keine Messwerte mehr an.");
         }
@@ -70,12 +70,12 @@ public sealed class Station : Subject<WeatherReading>
             _readingCount++;
         }
 
-        Notify(reading);
+        NotifyObservers(reading);
     }
 
     public void Stop()
     {
-        NotifyCompleted();
+        NotifyStopped();
     }
 
     // Unmögliche Werte (Sensorfehler) werden abgewiesen, bevor sie jemand sieht.

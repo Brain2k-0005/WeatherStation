@@ -17,7 +17,7 @@
             </CardDescription>
         </CardHeader>
         <div class="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
-            @if (_testSubscription is null)
+            @if (_testObserver is null)
             {
                 <Button Variant="Button.ButtonVariant.Outline" Size="Button.ButtonSize.Sm" OnClick="SubscribeTest">
                     <SvgGlyph Svg="@(Lucide.Plus)" Class="h-3.5 w-3.5" />
@@ -32,7 +32,7 @@
                 </Button>
             }
 
-            @if (_faultySubscription is null)
+            @if (_faultyObserver is null)
             {
                 <Button Variant="Button.ButtonVariant.Outline" Size="Button.ButtonSize.Sm" OnClick="SubscribeFaulty">
                     <SvgGlyph Svg="@(Lucide.Bug)" Class="h-3.5 w-3.5" />
@@ -49,7 +49,7 @@
 
             @* Binäre Entscheidung = Switch mit Zustandstext (Design Guide). *@
             <Switch Checked="_onlyDanger" CheckedChanged="OnOnlyDangerChanged"
-                    OnLabel="Nur Gefahr (Where-Filter aktiv)" OffLabel="Nur Gefahr (Where-Filter aus)" />
+                    OnLabel="Nur Gefahr (FilterObserver aktiv)" OffLabel="Nur Gefahr (FilterObserver aus)" />
 
             <div class="flex items-center gap-2">
                 <span class="text-sm text-muted-foreground">Szenario</span>
@@ -128,7 +128,7 @@
             {
                 <div class="py-6">
                     <GridEmpty Icon="@Lucide.ScrollText" Title="Noch nichts empfangen"
-                               Description="@(_testSubscription is null ? "Melde den Test-Observer an." : "Warte auf die nächste Warnung.")" />
+                               Description="@(_testObserver is null ? "Melde den Test-Observer an." : "Warte auf die nächste Warnung.")" />
                 </div>
             }
             else
@@ -170,10 +170,11 @@
 @code {
     private const int MaxLogLines = 50;
 
-    // Ein Token (IDisposable) pro Anmeldung. null bedeutet: nicht angemeldet.
-    private IDisposable? _testSubscription;
-    private IDisposable? _faultySubscription;
-    private IDisposable? _refreshSubscription;
+    // Wir merken uns jeden angemeldeten Observer, sonst könnten wir ihn nicht mehr abmelden
+    // (Unsubscribe braucht dasselbe Objekt). null bedeutet: nicht angemeldet.
+    private IWeatherObserver<WeatherWarning>? _testObserver;
+    private IWeatherObserver<WeatherReading>? _faultyObserver;
+    private IWeatherObserver<WeatherReading>? _refreshObserver;
 
     private bool _onlyDanger;
     private bool _disposed;
@@ -192,10 +193,11 @@
         // PATTERN: Observer - diese Seite ist selbst ein Beobachter der Station.
         // Sie taucht deshalb in der Liste "Beobachter der Station" mit auf!
         // Bei jedem Messwert liest sie die Namenslisten neu ein (so bleibt die Anzeige live).
-        _refreshSubscription = Weather.Station.Subscribe("Observer-Labor (Anzeige)", reading => Refresh(null, null));
+        _refreshObserver = new ActionObserver<WeatherReading>("Observer-Labor (Anzeige)", reading => Refresh(null, null));
+        Weather.Station.Subscribe(_refreshObserver);
 
         // ObserverFailed ist ein normales .NET-Event des Subjects. Es feuert, wenn ein
-        // Observer in OnNext eine Exception wirft. Auch hier: in Dispose wieder abmelden.
+        // Observer in Update eine Exception wirft. Auch hier: in Dispose wieder abmelden.
         Weather.Station.ObserverFailed += OnStationObserverFailed;
         Weather.Warnings.ObserverFailed += OnWarningsObserverFailed;
     }
@@ -212,7 +214,7 @@
 
     private void SubscribeTest()
     {
-        if (_testSubscription is not null)
+        if (_testObserver is not null)
         {
             return;
         }
@@ -230,25 +232,30 @@
 
         if (_onlyDanger)
         {
-            // PATTERN: Observer - Filter. Where() liefert eine neue "Quelle", die nur
-            // Warnungen der Stufe Gefahr durchlässt. Der Observer selbst bleibt unverändert.
-            _testSubscription = Weather.Warnings
-                .Where(warning => warning.Level == WarningLevel.Danger)
-                .Subscribe(testObserver);
+            // PATTERN: Observer - Filter. Der FilterObserver ist eine Hülle um den Test-Observer
+            // und lässt nur Warnungen der Stufe Gefahr durch. Der Test-Observer selbst bleibt unverändert.
+            _testObserver = new FilterObserver<WeatherWarning>(
+                testObserver,
+                warning => warning.Level == WarningLevel.Danger);
         }
         else
         {
-            _testSubscription = Weather.Warnings.Subscribe(testObserver);
+            _testObserver = testObserver;
         }
+
+        Weather.Warnings.Subscribe(_testObserver);
 
         ReadObserverLists();
     }
 
     private void UnsubscribeTest()
     {
-        // Dispose() auf dem Token = abmelden. Ab jetzt kommt nichts mehr an.
-        _testSubscription?.Dispose();
-        _testSubscription = null;
+        // Unsubscribe = abmelden. Ab jetzt kommt nichts mehr an.
+        if (_testObserver is not null)
+        {
+            Weather.Warnings.Unsubscribe(_testObserver);
+            _testObserver = null;
+        }
         ReadObserverLists();
     }
 
@@ -257,7 +264,7 @@
         _onlyDanger = value;
 
         // Läuft der Test-Observer schon, wird er mit dem neuen Filter neu angemeldet.
-        if (_testSubscription is not null)
+        if (_testObserver is not null)
         {
             UnsubscribeTest();
             SubscribeTest();
@@ -270,23 +277,26 @@
 
     private void SubscribeFaulty()
     {
-        if (_faultySubscription is not null)
+        if (_faultyObserver is not null)
         {
             return;
         }
 
-        ActionObserver<WeatherReading> faultyObserver = new(
+        _faultyObserver = new ActionObserver<WeatherReading>(
             "Fehlerhafter Observer",
             reading => throw new InvalidOperationException("Ich bin absichtlich kaputt!"));
 
-        _faultySubscription = Weather.Station.Subscribe(faultyObserver);
+        Weather.Station.Subscribe(_faultyObserver);
         ReadObserverLists();
     }
 
     private void UnsubscribeFaulty()
     {
-        _faultySubscription?.Dispose();
-        _faultySubscription = null;
+        if (_faultyObserver is not null)
+        {
+            Weather.Station.Unsubscribe(_faultyObserver);
+            _faultyObserver = null;
+        }
         ReadObserverLists();
     }
 
@@ -355,9 +365,15 @@
         // Sonst blieben sie nach dem Verlassen der Seite bei der Station hängen
         // (Speicherleck) und würden weiter Meldungen an eine tote Seite schicken.
         _disposed = true;
-        _testSubscription?.Dispose();
-        _faultySubscription?.Dispose();
-        _refreshSubscription?.Dispose();
+        if (_testObserver is not null)
+        {
+            Weather.Warnings.Unsubscribe(_testObserver);
+        }
+        if (_faultyObserver is not null)
+        {
+            Weather.Station.Unsubscribe(_faultyObserver);
+        }
+        Weather.Station.Unsubscribe(_refreshObserver!);
         Weather.Station.ObserverFailed -= OnStationObserverFailed;
         Weather.Warnings.ObserverFailed -= OnWarningsObserverFailed;
     }
